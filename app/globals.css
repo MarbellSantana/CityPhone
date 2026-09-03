@@ -8,9 +8,8 @@ button, input, select { font: inherit; }
 .city-shell { min-height: 100vh; background: radial-gradient(circle at 92% 0%, #eef8f0 0, transparent 28%), #f5f8f6; }
 .main { min-height: 100vh; max-width: 1480px; margin: 0 auto; padding: 34px 48px 56px; }
 .header { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 46px; position: relative; z-index: 30; }
-.brand { font-size: 30px; font-weight: 900; letter-spacing: -1.2px; line-height: 1; }
-.brand-city { color: var(--black); }
-.brand span:not(.brand-city) { color: var(--green-dark); }
+.brand { font-size: 30px; font-weight: 900; letter-spacing: -1.2px; line-height: 1; color: var(--green-dark); }
+.brand-city, .brand span { color: var(--green-dark); }
 .header p { margin: 7px 0 0; color: var(--muted); font-size: 12px; font-weight: 600; }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .status-pill { display: flex; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,.86); color: #5f6963; font-size: 11px; font-weight: 800; }
