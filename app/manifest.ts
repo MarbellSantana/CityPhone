@@ -15,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#b8e6c1",
     lang: "es",
     icons: [
-      { src: "/Cityphone/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" },
+      { src: "/Cityphone/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
     ],
   };
 }
