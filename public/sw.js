@@ -1,4 +1,4 @@
-const CACHE_NAME = "cityphone-v2";
+const CACHE_NAME = "cityphone-v3";
 const APP_SHELL = ["/Cityphone/", "/Cityphone/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -15,7 +15,6 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-
   event.respondWith(
     fetch(event.request, { cache: "no-store" })
       .then((response) => {
