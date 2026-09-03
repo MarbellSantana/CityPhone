@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, Box, Calculator, ChevronDown, CreditCard, DollarSign, LayoutDashboard, Package, Plus, Receipt, ShoppingBag, Wrench } from "lucide-react";
+import { Activity, ArrowUpRight, BarChart3, Box, Calculator, ChevronDown, CreditCard, DollarSign, LayoutDashboard, Package, Plus, Receipt, ShoppingBag, Wrench } from "lucide-react";
 
 const nav = [
   [LayoutDashboard, "Dashboard"], [Receipt, "Ventas"], [CreditCard, "Caja"], [Box, "Inventario"],
@@ -29,8 +29,8 @@ export default function Home() {
       <main className="main">
         <header className="header">
           <div className="brand-block">
-            <div className="brand">City <span>Phone</span></div>
-            <p>Panel de gestión</p>
+            <div className="brand"><span className="brand-city">City</span> <span>Phone</span></div>
+            <p>Gestión del local · Av. Corrientes 640</p>
           </div>
           <div className="header-actions">
             <div className="status-pill"><span className="status-dot" /> Sistema activo</div>
