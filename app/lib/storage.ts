@@ -5,6 +5,7 @@ export type CashMovement = { id:number; type:"Ingreso"|"Egreso"; concept:string;
 export type Repair = { id:number; nombre:string; apellido:string; telefono:string; email:string; equipo:string; motivo:string; precio:number; estado:string; createdAt:string };
 export type Quote = { id:number; cliente:string; telefono:string; equipo:string; reparacion:string; costo:number; precio:number; estado:string; createdAt:string };
 export type Part = { id:number; name:string; model:string; cost:number; price:number; stock:number; minStock:number };
+export type LocalLoan = { id:number; product:string; date:string; store:string; createdAt:string };
 
 export const KEYS = {
   products:"cityphone_products_v1",
@@ -13,6 +14,7 @@ export const KEYS = {
   repairs:"cityphone_repairs_v1",
   quotes:"cityphone_quotes_v1",
   parts:"cityphone_parts_v1",
+  localLoans:"cityphone_local_loans_v1",
 };
 
 export function load<T>(key:string, fallback:T):T {
