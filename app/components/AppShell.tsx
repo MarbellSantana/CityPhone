@@ -10,7 +10,7 @@ const nav = [
   [CreditCard, "Caja", "/caja"],
   [Box, "Inventario", "/inventario"],
   [Wrench, "Servicio técnico", "/servicio-tecnico"],
-  [BarChart3, "Meses y reportes", "/"],
+  [BarChart3, "Meses y reportes", "/reportes"],
 ] as const;
 
 export default function AppShell({ title, subtitle, active, children, action }: { title: string; subtitle: string; active: string; children: React.ReactNode; action?: React.ReactNode }) {
