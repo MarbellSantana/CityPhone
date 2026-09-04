@@ -104,7 +104,7 @@ export default function CajaPage() {
     </section>
 
     <section className="section-gap" style={{display:"flex", justifyContent:"flex-end", gap:10, flexWrap:"wrap"}}>
-      <button className="outline-action" onClick={() => setShowClose(true)}><CheckCircle2 size={17}/> Cerrar caja</button>
+      <button className="outline-action" onClick={() => setShowClose(true)}><CheckCircle2 size={17}/> Cerrar mes</button>
       <button className="primary-button" onClick={() => setOpen(true)}><Plus size={18}/> Nuevo movimiento</button>
     </section>
 
@@ -122,27 +122,6 @@ export default function CajaPage() {
     </section>}
 
     <section className="card workspace-card section-gap">
-      <div className="card-heading"><div><h2>Reporte mensual de caja</h2><p>Resumen para controlar gastos y preparar el cierre del mes.</p></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><select className="period-select" value={reportMonth} onChange={e=>setReportMonth(Number(e.target.value))}>{monthNames.map((m,i)=><option key={m} value={i}>{m}</option>)}</select><select className="period-select" value={reportYear} onChange={e=>setReportYear(Number(e.target.value))}>{[now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1].map(y=><option key={y}>{y}</option>)}</select></div></div>
-      <section className="kpis page-kpis" style={{marginTop:14}}>
-        <div className="card kpi-card"><div className="kpi-label">Ingresos del mes</div><div className="kpi-value">{money.format(monthlyReport.income)}</div></div>
-        <div className="card kpi-card"><div className="kpi-label">Gastos del mes</div><div className="kpi-value">{money.format(monthlyReport.expenses)}</div></div>
-        <div className="card kpi-card"><div className="kpi-label">Resultado del mes</div><div className="kpi-value">{money.format(monthlyReport.balance)}</div></div>
-      </section>
-      <div className="card-heading" style={{marginTop:18}}><div><h2>Gastos por categoría</h2><p>Así puedes ver rápidamente en qué se fue el dinero.</p></div><ReceiptText size={20}/></div>
-      {Object.keys(monthlyReport.breakdown).length === 0 ? <div className="empty-state compact"><ReceiptText size={30}/><b>Sin gastos registrados</b><span>Los egresos categorizados aparecerán aquí.</span></div> : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginTop:12}}>{Object.entries(monthlyReport.breakdown).sort((a,b)=>b[1]-a[1]).map(([name,total])=><div key={name} style={{border:"1px solid var(--border)",borderRadius:14,padding:14,background:"#fff"}}><small style={{fontWeight:800,color:"var(--muted)"}}>{name}</small><div style={{fontSize:20,fontWeight:900,marginTop:5}}>{money.format(total)}</div></div>)}</div>}
-      {existingClosure && <div style={{marginTop:16,padding:"12px 14px",border:"1px solid var(--border)",borderRadius:14,background:"var(--green-soft)"}}><b>Caja cerrada</b><div style={{fontSize:11,marginTop:4}}>Este mes fue cerrado el {new Date(existingClosure.closedAt).toLocaleDateString("es-AR")} con un resultado de {money.format(existingClosure.balance)}.</div></div>}
-    </section>
-
-    {showClose && <section className="card workspace-card section-gap">
-      <div className="card-heading"><div><h2>Cerrar caja · {monthNames[reportMonth]} {reportYear}</h2><p>Se guardará una fotografía del resultado mensual y de los gastos registrados.</p></div><button className="ghost-button" onClick={()=>setShowClose(false)}><X size={17}/> Cancelar</button></div>
-      <div className="summary-line"><span>Ingresos</span><strong>{money.format(monthlyReport.income)}</strong></div>
-      <div className="summary-line"><span>Gastos</span><strong>-{money.format(monthlyReport.expenses)}</strong></div>
-      <div className="summary-line total-line"><span>Resultado del mes</span><strong>{money.format(monthlyReport.balance)}</strong></div>
-      <div style={{marginTop:12,fontSize:11,color:"var(--muted)"}}>{monthlyMovements.length} movimientos incluidos en este cierre.</div>
-      <button className="primary-button full-button" style={{marginTop:14}} disabled={!!existingClosure} onClick={closeMonth}>{existingClosure ? "Este mes ya fue cerrado" : "Confirmar cierre mensual"}</button>
-    </section>}
-
-    <section className="card workspace-card section-gap">
       <div className="card-heading"><div><h2>Movimientos de caja</h2><p>Ingresos y egresos registrados.</p></div><select className="period-select" value={period} onChange={e => setPeriod(e.target.value)}><option>Hoy</option><option>Esta semana</option><option>Este mes</option></select></div>
       {!hydrated ? <div className="empty-state"><b>Cargando movimientos...</b></div> : filtered.length === 0 ? <div className="empty-state"><Wallet size={34}/><b>Todavía no hay movimientos</b><span>Los cobros en efectivo y movimientos manuales aparecerán aquí.</span></div> : <div className="sales-table">
         <div className="table-head"><span>Fecha</span><span>Concepto</span><span>Tipo</span><span>Método</span><span>Monto</span></div>
@@ -150,6 +129,22 @@ export default function CajaPage() {
       </div>}
     </section>
 
-    {closures.length > 0 && <section className="card workspace-card section-gap"><div className="card-heading"><div><h2>Historial de cierres</h2><p>Cierres mensuales guardados.</p></div><CalendarDays size={20}/></div><div className="sales-table">{closures.map(c=><div className="table-row" key={c.id}><div><b>{c.month} {c.year}</b><small>Cerrado {new Date(c.closedAt).toLocaleDateString("es-AR")}</small></div><span>{c.movementCount} movimientos</span><span>Gastos {money.format(c.expenses)}</span><span>Ingresos {money.format(c.income)}</span><strong>{money.format(c.balance)}</strong></div>)}</div></section>}
+    {closures.length > 0 && <section className="card workspace-card section-gap"><div className="card-heading"><div><h2>Historial de cierres</h2><p>Los reportes cerrados también aparecen automáticamente en Meses y reportes.</p></div><CalendarDays size={20}/></div><div className="sales-table">{closures.map(c=><div className="table-row" key={c.id}><div><b>{c.month} {c.year}</b><small>Cerrado {new Date(c.closedAt).toLocaleDateString("es-AR")}</small></div><span>{c.movementCount} movimientos</span><span>Gastos {money.format(c.expenses)}</span><span>Ingresos {money.format(c.income)}</span><strong>{money.format(c.balance)}</strong></div>)}</div></section>}
+
+    {showClose && <div style={{position:"fixed",inset:0,zIndex:80,background:"rgba(10,18,13,.42)",display:"grid",placeItems:"center",padding:18}} onClick={()=>setShowClose(false)}>
+      <section className="card workspace-card" style={{width:"min(820px,100%)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.25)"}} onClick={e=>e.stopPropagation()}>
+        <div className="card-heading"><div><h2>Reporte mensual de caja</h2><p>Este reporte se genera únicamente al cerrar el mes y quedará guardado en Meses y reportes.</p></div><button className="ghost-button" onClick={()=>setShowClose(false)}><X size={17}/> Cerrar</button></div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}><select className="period-select" value={reportMonth} onChange={e=>setReportMonth(Number(e.target.value))}>{monthNames.map((m,i)=><option key={m} value={i}>{m}</option>)}</select><select className="period-select" value={reportYear} onChange={e=>setReportYear(Number(e.target.value))}>{[now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1].map(y=><option key={y}>{y}</option>)}</select></div>
+        <section className="kpis page-kpis" style={{marginTop:14}}>
+          <div className="card kpi-card"><div className="kpi-label">Ingresos del mes</div><div className="kpi-value">{money.format(monthlyReport.income)}</div></div>
+          <div className="card kpi-card"><div className="kpi-label">Gastos del mes</div><div className="kpi-value">{money.format(monthlyReport.expenses)}</div></div>
+          <div className="card kpi-card"><div className="kpi-label">Resultado del mes</div><div className="kpi-value">{money.format(monthlyReport.balance)}</div></div>
+        </section>
+        <div className="card-heading" style={{marginTop:18}}><div><h2>Gastos por categoría</h2><p>Detalle incluido en el cierre mensual.</p></div><ReceiptText size={20}/></div>
+        {Object.keys(monthlyReport.breakdown).length === 0 ? <div className="empty-state compact"><ReceiptText size={30}/><b>Sin gastos registrados</b><span>No hay egresos categorizados para este mes.</span></div> : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginTop:12}}>{Object.entries(monthlyReport.breakdown).sort((a,b)=>b[1]-a[1]).map(([name,total])=><div key={name} style={{border:"1px solid var(--border)",borderRadius:14,padding:14,background:"#fff"}}><small style={{fontWeight:800,color:"var(--muted)"}}>{name}</small><div style={{fontSize:20,fontWeight:900,marginTop:5}}>{money.format(total)}</div></div>)}</div>}
+        <div style={{marginTop:14,fontSize:11,color:"var(--muted)"}}>{monthlyMovements.length} movimientos incluidos en este cierre.</div>
+        {existingClosure ? <div style={{marginTop:16,padding:"12px 14px",border:"1px solid var(--border)",borderRadius:14,background:"var(--green-soft)"}}><b>Este mes ya fue cerrado</b><div style={{fontSize:11,marginTop:4}}>Cerrado el {new Date(existingClosure.closedAt).toLocaleDateString("es-AR")} con un resultado de {money.format(existingClosure.balance)}.</div></div> : <button className="primary-button full-button" style={{marginTop:16}} onClick={closeMonth}><CheckCircle2 size={17}/> Confirmar cierre mensual</button>}
+      </section>
+    </div>}
   </AppShell>;
 }
