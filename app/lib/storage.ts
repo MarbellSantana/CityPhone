@@ -1,6 +1,23 @@
 export type Product = { id:number; name:string; category:string; cost:number; price:number; stock:number; minStock:number; code?:string };
 export type SaleItem = { productId:number; name:string; qty:number; price:number };
-export type Sale = { id:number; items:SaleItem[]; customer:string; total:number; method:string; cashAmount:number; otherAmount:number; createdAt:string };
+export type Sale = {
+  id:number;
+  items:SaleItem[];
+  customer:string;
+  total:number;
+  method:string;
+  cashAmount:number;
+  otherAmount:number;
+  createdAt:string;
+  provider?:string;
+  feeRate?:number;
+  feeBase?:number;
+  feeVat?:number;
+  commission?:number;
+  netTotal?:number;
+  settlement?:string;
+  secondaryMethod?:string;
+};
 export type CashMovement = { id:number; type:"Ingreso"|"Egreso"; concept:string; amount:number; method:string; note:string; createdAt:string; source?:string };
 export type Repair = { id:number; nombre:string; apellido:string; telefono:string; email:string; equipo:string; motivo:string; precio:number; estado:string; createdAt:string };
 export type Quote = { id:number; cliente:string; telefono:string; equipo:string; reparacion:string; costo:number; precio:number; estado:string; createdAt:string };
