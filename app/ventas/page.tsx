@@ -14,114 +14,38 @@ type InvoiceResult = { invoiceNumber?:string; cae?:string; caeDueDate?:string };
 const IVA=0.21;
 const ARCA_ENDPOINT="https://yftaloxtylijudnoewrm.supabase.co/functions/v1/arca-invoice";
 const PLANS:Record<string,Partial<Record<ProcessorMethod,FeePlan[]>>>={
-  Santander:{
-    Débito:[{id:"san-deb",label:"1,21% + IVA",rate:1.21,settlement:"Según condiciones Santander"}],
-    Crédito:[{id:"san-cre",label:"2,42% + IVA",rate:2.42,settlement:"Según condiciones Santander"}],
-  },
-  TotalCoin:{
-    Débito:[{id:"tc-deb-instant",label:"2,5% + IVA · acreditación inmediata",rate:2.5,settlement:"En el momento"},{id:"tc-deb-2d",label:"1,99% + IVA · 2 días hábiles",rate:1.99,settlement:"2 días hábiles"}],
-    Crédito:[{id:"tc-cre-5d",label:"2,5% + IVA · 5 días hábiles",rate:2.5,settlement:"5 días hábiles"}],
-    QR:[{id:"tc-qr",label:"0,8% + IVA · acreditación inmediata",rate:0.8,settlement:"En el momento"}],
-    PIX:[{id:"tc-pix",label:"0% + IVA · promoción informada",rate:0,settlement:"En el momento"}],
-  },
-  BBVA:{
-    Débito:[{id:"bbva-deb",label:"2,99% + IVA · 1 día",rate:2.99,settlement:"1 día"}],
-    Crédito:[{id:"bbva-cre-10d",label:"2,99% + IVA · 10 días",rate:2.99,settlement:"10 días"}],
-    QR:[{id:"bbva-qr",label:"0,8% + IVA · acreditación inmediata",rate:0.8,settlement:"En el momento"},{id:"bbva-qr-promo",label:"0% + IVA · promo primeros 90 días",rate:0,settlement:"En el momento"}],
-  },
+  Santander:{Débito:[{id:"san-deb",label:"1,21% + IVA",rate:1.21,settlement:"Según condiciones Santander"}],Crédito:[{id:"san-cre",label:"2,42% + IVA",rate:2.42,settlement:"Según condiciones Santander"}]},
+  TotalCoin:{Débito:[{id:"tc-deb-instant",label:"2,5% + IVA · acreditación inmediata",rate:2.5,settlement:"En el momento"},{id:"tc-deb-2d",label:"1,99% + IVA · 2 días hábiles",rate:1.99,settlement:"2 días hábiles"}],Crédito:[{id:"tc-cre-5d",label:"2,5% + IVA · 5 días hábiles",rate:2.5,settlement:"5 días hábiles"}],QR:[{id:"tc-qr",label:"0,8% + IVA · acreditación inmediata",rate:0.8,settlement:"En el momento"}],PIX:[{id:"tc-pix",label:"0% + IVA · promoción informada",rate:0,settlement:"En el momento"}]},
+  BBVA:{Débito:[{id:"bbva-deb",label:"2,99% + IVA · 1 día",rate:2.99,settlement:"1 día"}],Crédito:[{id:"bbva-cre-10d",label:"2,99% + IVA · 10 días",rate:2.99,settlement:"10 días"}],QR:[{id:"bbva-qr",label:"0,8% + IVA · acreditación inmediata",rate:0.8,settlement:"En el momento"},{id:"bbva-qr-promo",label:"0% + IVA · promo primeros 90 días",rate:0,settlement:"En el momento"}]}
 };
-
 function isProcessorMethod(m:string):m is ProcessorMethod{return["Débito","Crédito","QR","PIX"].includes(m)}
 
 export default function VentasPage(){
-  const[products,setProducts]=useState<Product[]>([]),[cart,setCart]=useState<CartItem[]>([]),[search,setSearch]=useState("");
-  const[customer,setCustomer]=useState(""),[method,setMethod]=useState<PayMethod>(""),[cashAmount,setCashAmount]=useState(""),[otherAmount,setOtherAmount]=useState(""),[secondaryMethod,setSecondaryMethod]=useState<PayMethod>("");
-  const[provider,setProvider]=useState(""),[planId,setPlanId]=useState("");
-  const[invoice,setInvoice]=useState(false),[phone,setPhone]=useState(""),[email,setEmail]=useState(""),[docType,setDocType]=useState("DNI"),[docNumber,setDocNumber]=useState("");
-  const[ivaConditionId,setIvaConditionId]=useState(5),[invoicePin,setInvoicePin]=useState(""),[notice,setNotice]=useState(""),[lastInvoice,setLastInvoice]=useState<InvoiceResult|null>(null),[busy,setBusy]=useState(false);
-
-  useEffect(()=>setProducts(load<Product[]>(KEYS.products,[])),[]);
-  const subtotal=useMemo(()=>cart.reduce((s,i)=>s+i.price*i.qty,0),[cart]);
-  const results=useMemo(()=>{const q=search.toLowerCase().trim();return q?products.filter(p=>p.name.toLowerCase().includes(q)||p.category.toLowerCase().includes(q)||(p.code||"").toLowerCase().includes(q)).slice(0,8):[]},[products,search]);
-  const feeMethod=method==="Pago mixto"?secondaryMethod:method;
-  const feeBaseAmount=method==="Pago mixto"?Number(otherAmount||0):subtotal;
-  const providers=isProcessorMethod(feeMethod)?Object.keys(PLANS).filter(p=>(PLANS[p]?.[feeMethod]?.length||0)>0):[];
-  const availablePlans=provider&&isProcessorMethod(feeMethod)?PLANS[provider]?.[feeMethod]||[]:[];
-  const selectedPlan=availablePlans.find(p=>p.id===planId),feeRate=selectedPlan?.rate||0,feeBase=isProcessorMethod(feeMethod)?feeBaseAmount*feeRate/100:0,feeVat=feeBase*IVA,commission=feeBase+feeVat,netReceived=subtotal-commission;
-
-  function addProduct(p:Product){if(p.stock<=0)return;setCart(v=>{const f=v.find(i=>i.productId===p.id);return f?v.map(i=>i.productId===p.id?{...i,qty:Math.min(i.qty+1,p.stock)}:i):[...v,{productId:p.id,name:p.name,qty:1,price:p.price,stock:p.stock}]});setSearch("")}
-  function clearProcessor(){setProvider("");setPlanId("")}
-  function resetSale(){setCart([]);setCustomer("");setMethod("");setCashAmount("");setOtherAmount("");setSecondaryMethod("");setSearch("");setInvoice(false);setPhone("");setEmail("");setDocType("DNI");setDocNumber("");setIvaConditionId(5);setInvoicePin("");setNotice("");setLastInvoice(null);clearProcessor()}
-  function changeProvider(v:string){setProvider(v);setPlanId("");const plans=isProcessorMethod(feeMethod)?PLANS[v]?.[feeMethod]:undefined;if(plans?.length===1)setPlanId(plans[0].id)}
-
-  const mixedValid=method!=="Pago mixto"||(Number(cashAmount||0)>=0&&Number(otherAmount||0)>=0&&Number(cashAmount||0)+Number(otherAmount||0)===subtotal&&!!secondaryMethod&&secondaryMethod!=="Efectivo"&&secondaryMethod!=="Pago mixto");
-  const processorValid=!isProcessorMethod(feeMethod)||(!!provider&&!!selectedPlan);
-  const invoiceValid=!invoice||(invoicePin.trim().length>0&&(subtotal<10000000||docNumber.replace(/\D/g,"").length>0));
-  const canConfirm=cart.length>0&&!!method&&subtotal>0&&mixedValid&&processorValid&&invoiceValid&&!busy;
-
-  async function requestInvoice(sale:Sale){
-    const r=await fetch(ARCA_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"invoice",invoicePin,sale,customer:{name:customer.trim()||"Consumidor final",phone,email,docType,docNumber,ivaConditionId}})});
-    const data=await r.json();
-    if(!r.ok)throw new Error(data.error||"No se pudo facturar");
-    const updated:Sale={...sale,invoiceStatus:"Facturada",invoiceType:data.invoiceType||"Factura C",invoiceNumber:data.invoiceNumber,invoicePointOfSale:data.pointOfSale,cae:data.cae,caeDueDate:data.caeDueDate};
-    save(KEYS.sales,load<Sale[]>(KEYS.sales,[]).map(s=>s.id===sale.id?updated:s));
-    setLastInvoice({invoiceNumber:data.invoiceNumber,cae:data.cae,caeDueDate:data.caeDueDate});
-    setNotice(`Venta registrada y facturada con ARCA${data.invoiceNumber?` · ${data.invoiceNumber}`:""}.`);
-  }
-
-  async function confirmSale(){
-    if(!canConfirm)return;
-    setBusy(true);setNotice("");setLastInvoice(null);
-    const now=new Date().toISOString();
-    const sale:Sale={id:Date.now(),items:cart.map(({stock,...i})=>i),customer:customer.trim(),total:subtotal,method,cashAmount:method==="Efectivo"?subtotal:method==="Pago mixto"?Number(cashAmount||0):0,otherAmount:method==="Pago mixto"?Number(otherAmount||0):method==="Efectivo"?0:subtotal,createdAt:now,provider:provider||undefined,feeRate:isProcessorMethod(feeMethod)?feeRate:0,feeBase,feeVat,commission,netTotal:netReceived,settlement:selectedPlan?.settlement,secondaryMethod:method==="Pago mixto"?secondaryMethod:undefined,invoiceRequested:invoice,invoiceStatus:invoice?"Pendiente":"No facturada",customerPhone:phone.trim(),customerEmail:email.trim(),customerDocType:invoice?docType:undefined,customerDocNumber:invoice?docNumber.trim():undefined,customerIvaConditionId:invoice?ivaConditionId:undefined};
-    save(KEYS.sales,[sale,...load<Sale[]>(KEYS.sales,[])]);
-    const updated=products.map(p=>{const i=cart.find(x=>x.productId===p.id);return i?{...p,stock:Math.max(0,p.stock-i.qty)}:p});setProducts(updated);save(KEYS.products,updated);
-    if(sale.cashAmount>0){const m:CashMovement={id:sale.id,type:"Ingreso",concept:`Venta #${String(sale.id).slice(-6)}`,amount:sale.cashAmount,method:"Efectivo",note:customer.trim()||"Venta",createdAt:now,source:"sale"};save(KEYS.cash,[m,...load<CashMovement[]>(KEYS.cash,[])])}
-    setCart([]);
-    try{if(invoice){setNotice("Venta registrada. Solicitando CAE a ARCA...");await requestInvoice(sale)}else setNotice("Venta registrada sin facturar.")}catch(e){const message=e instanceof Error?e.message:"No se pudo conectar con ARCA";save(KEYS.sales,load<Sale[]>(KEYS.sales,[]).map(s=>s.id===sale.id?{...s,invoiceStatus:"Error"}:s));setNotice(`La venta quedó registrada, pero la factura no se emitió: ${message}`)}finally{setBusy(false)}
-  }
-
-  const shareText=`Hola${customer?` ${customer}`:""}, te enviamos el comprobante de tu compra en City Phone por ${money.format(subtotal)}${lastInvoice?.invoiceNumber?`. Factura C ${lastInvoice.invoiceNumber}. CAE ${lastInvoice.cae||""}`:""}.`;
-
-  return <AppShell title="Ventas" subtitle="Registra ventas y decide en el momento si quieres emitir factura electrónica." active="Ventas">
-    <section className="workspace-grid sales-workspace">
-      <div className="card workspace-card">
-        <div className="card-heading"><div><h2>Agregar productos</h2><p>Busca por nombre, categoría o código.</p></div></div>
-        <div className="search-field"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar producto..."/></div>
-        {search.trim()&&<div style={{display:"grid",gap:8,marginTop:14}}>{results.map(p=><button key={p.id} onClick={()=>addProduct(p)} disabled={p.stock<=0} className="outline-action" style={{justifyContent:"space-between",width:"100%"}}><span>{p.name}</span><span>{money.format(p.price)} · Stock {p.stock}</span></button>)}</div>}
-        <div style={{marginTop:18}}><h2>Carrito</h2>{cart.length===0?<div className="empty-state compact"><ShoppingCart size={30}/><b>No hay productos agregados</b></div>:<div className="sales-table">{cart.map(i=><div className="table-row" key={i.productId}><div><b>{i.name}</b><small>{money.format(i.price)} c/u</small></div><span style={{display:"flex",gap:6}}><button className="outline-action" onClick={()=>setCart(v=>v.map(x=>x.productId===i.productId?{...x,qty:Math.max(1,x.qty-1)}:x))}><Minus size={14}/></button><b>{i.qty}</b><button className="outline-action" onClick={()=>addProduct(products.find(p=>p.id===i.productId)!)}><Plus size={14}/></button></span><strong>{money.format(i.price*i.qty)}</strong><button className="ghost-button" onClick={()=>setCart(v=>v.filter(x=>x.productId!==i.productId))}><Trash2 size={15}/></button></div>)}</div>}
-        <button className="primary-button full-button" style={{marginTop:16}} onClick={resetSale}><Plus size={18}/> Nueva venta</button></div>
-      </div>
-
-      <div className="card workspace-card sticky-summary">
-        <h2>Resumen de venta</h2>
-        <div className="summary-line"><span>Venta bruta</span><strong>{money.format(subtotal)}</strong></div>{commission>0&&<div className="summary-line"><span>Comisiones + IVA</span><strong>-{money.format(commission)}</strong></div>}
-        <div className="summary-line total-line"><span>Neto recibido</span><strong>{money.format(netReceived)}</strong></div>
-        <label className="field-label">Cliente <small>(opcional)</small><input value={customer} onChange={e=>setCustomer(e.target.value)} /></label>
-        <label className="field-label">Método de pago<select value={method} onChange={e=>{setMethod(e.target.value as PayMethod);setSecondaryMethod("");setCashAmount("");setOtherAmount("");clearProcessor()}}><option value="">Seleccionar</option>{["Efectivo","Débito","Crédito","QR","PIX","Transferencia","Pago mixto"].map(x=><option key={x}>{x}</option>)}</select></label>
-        {method==="Pago mixto"&&<><label className="field-label">Monto efectivo<input type="number" value={cashAmount} onChange={e=>setCashAmount(e.target.value)}/></label><label className="field-label">Monto restante<input type="number" value={otherAmount} onChange={e=>setOtherAmount(e.target.value)}/></label><label className="field-label">Medio restante<select value={secondaryMethod} onChange={e=>{setSecondaryMethod(e.target.value as PayMethod);clearProcessor()}}><option value="">Seleccionar</option>{["Débito","Crédito","QR","PIX","Transferencia"].map(x=><option key={x}>{x}</option>)}</select></label></>}
-        {isProcessorMethod(feeMethod)&&<><label className="field-label">Procesador / banco<select value={provider} onChange={e=>changeProvider(e.target.value)}><option value="">Seleccionar</option>{providers.map(p=><option key={p}>{p==="BBVA"?"BBVA (Francés)":p}</option>)}</select></label>{provider&&<label className="field-label">Comisión / acreditación<select value={planId} onChange={e=>setPlanId(e.target.value)}><option value="">Seleccionar</option>{availablePlans.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></label>}</>}
-
-        <div style={{marginTop:14,padding:14,border:"1px solid var(--border)",borderRadius:14,background:"var(--green-soft)"}}>
-          <label style={{display:"flex",gap:10,alignItems:"center",fontWeight:900}}><input type="checkbox" checked={invoice} onChange={e=>setInvoice(e.target.checked)}/> Registrar y facturar con ARCA</label>
-          <small style={{display:"block",marginTop:6}}>Al marcarlo, City Phone solicita una Factura C y CAE en el punto de venta 00002.</small>
-          {invoice&&<div className="form-grid" style={{marginTop:12}}>
-            <label className="field-label">Condición IVA del receptor<select value={ivaConditionId} onChange={e=>setIvaConditionId(Number(e.target.value))}><option value={5}>Consumidor final</option><option value={6}>Responsable Monotributo</option><option value={1}>IVA Responsable Inscripto</option><option value={4}>IVA Exento</option><option value={15}>IVA No Alcanzado</option></select></label>
-            <label className="field-label">Documento<select value={docType} onChange={e=>setDocType(e.target.value)}><option>DNI</option><option>CUIT</option></select></label>
-            <label className="field-label">Número de documento<input value={docNumber} onChange={e=>setDocNumber(e.target.value)} placeholder={subtotal>=10000000?"Obligatorio por el monto":"Opcional para consumidor final"}/></label>
-            <label className="field-label">WhatsApp<input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Ej. 54911..."/></label>
-            <label className="field-label">Correo<input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></label>
-            <label className="field-label">Clave de facturación<input type="password" autoComplete="off" value={invoicePin} onChange={e=>setInvoicePin(e.target.value)} placeholder="Clave privada de City Phone"/></label>
-            {subtotal>=10000000&&!docNumber.replace(/\D/g,"")&&<small style={{gridColumn:"1 / -1",fontWeight:800}}>Para operaciones de $10.000.000 o más ARCA exige identificar al consumidor final.</small>}
-          </div>}
-        </div>
-
-        <button className="primary-button full-button" disabled={!canConfirm} onClick={confirmSale}>{busy?"Procesando...":invoice?"Registrar y facturar":"Confirmar venta"}</button>
-        {notice&&<div style={{marginTop:10,fontSize:11,fontWeight:800}}>{notice}</div>}
-        {lastInvoice&&<div style={{marginTop:10,padding:12,border:"1px solid var(--border)",borderRadius:12}}><b>Factura C {lastInvoice.invoiceNumber}</b><small style={{display:"block",marginTop:4}}>CAE: {lastInvoice.cae} · Vto.: {lastInvoice.caeDueDate}</small></div>}
-        {lastInvoice&&<div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>{phone&&<button className="outline-action" onClick={()=>window.open(`https://wa.me/${phone.replace(/\D/g,"")}?text=${encodeURIComponent(shareText)}`,"_blank")}><MessageCircle size={15}/> WhatsApp</button>}{email&&<button className="outline-action" onClick={()=>window.location.href=`mailto:${email}?subject=${encodeURIComponent("Factura City Phone")}&body=${encodeURIComponent(shareText)}`}><Mail size={15}/> Correo</button>}</div>}
-        <button className="ghost-button full-button" onClick={resetSale}><Trash2 size={16}/> Limpiar venta</button>
-      </div>
-    </section>
-  </AppShell>;
+ const[products,setProducts]=useState<Product[]>([]),[cart,setCart]=useState<CartItem[]>([]),[search,setSearch]=useState("");
+ const[customer,setCustomer]=useState(""),[method,setMethod]=useState<PayMethod>(""),[cashAmount,setCashAmount]=useState(""),[otherAmount,setOtherAmount]=useState(""),[secondaryMethod,setSecondaryMethod]=useState<PayMethod>("");
+ const[provider,setProvider]=useState(""),[planId,setPlanId]=useState("");
+ const[invoice,setInvoice]=useState(false),[phone,setPhone]=useState(""),[email,setEmail]=useState(""),[docType,setDocType]=useState("DNI"),[docNumber,setDocNumber]=useState("");
+ const[notice,setNotice]=useState(""),[lastInvoice,setLastInvoice]=useState<InvoiceResult|null>(null),[busy,setBusy]=useState(false);
+ const ivaConditionId=5;
+ useEffect(()=>setProducts(load<Product[]>(KEYS.products,[])),[]);
+ const subtotal=useMemo(()=>cart.reduce((s,i)=>s+i.price*i.qty,0),[cart]);
+ const results=useMemo(()=>{const q=search.toLowerCase().trim();return q?products.filter(p=>p.name.toLowerCase().includes(q)||p.category.toLowerCase().includes(q)||(p.code||"").toLowerCase().includes(q)).slice(0,8):[]},[products,search]);
+ const feeMethod=method==="Pago mixto"?secondaryMethod:method,feeBaseAmount=method==="Pago mixto"?Number(otherAmount||0):subtotal;
+ const providers=isProcessorMethod(feeMethod)?Object.keys(PLANS).filter(p=>(PLANS[p]?.[feeMethod]?.length||0)>0):[];
+ const availablePlans=provider&&isProcessorMethod(feeMethod)?PLANS[provider]?.[feeMethod]||[]:[];
+ const selectedPlan=availablePlans.find(p=>p.id===planId),feeRate=selectedPlan?.rate||0,feeBase=isProcessorMethod(feeMethod)?feeBaseAmount*feeRate/100:0,feeVat=feeBase*IVA,commission=feeBase+feeVat,netReceived=subtotal-commission;
+ function addProduct(p:Product){if(p.stock<=0)return;setCart(v=>{const f=v.find(i=>i.productId===p.id);return f?v.map(i=>i.productId===p.id?{...i,qty:Math.min(i.qty+1,p.stock)}:i):[...v,{productId:p.id,name:p.name,qty:1,price:p.price,stock:p.stock}]});setSearch("")}
+ function clearProcessor(){setProvider("");setPlanId("")}
+ function resetSale(){setCart([]);setCustomer("");setMethod("");setCashAmount("");setOtherAmount("");setSecondaryMethod("");setSearch("");setInvoice(false);setPhone("");setEmail("");setDocType("DNI");setDocNumber("");setNotice("");setLastInvoice(null);clearProcessor()}
+ function changeProvider(v:string){setProvider(v);setPlanId("");const plans=isProcessorMethod(feeMethod)?PLANS[v]?.[feeMethod]:undefined;if(plans?.length===1)setPlanId(plans[0].id)}
+ const mixedValid=method!=="Pago mixto"||(Number(cashAmount||0)>=0&&Number(otherAmount||0)>=0&&Number(cashAmount||0)+Number(otherAmount||0)===subtotal&&!!secondaryMethod&&secondaryMethod!=="Efectivo"&&secondaryMethod!=="Pago mixto");
+ const processorValid=!isProcessorMethod(feeMethod)||(!!provider&&!!selectedPlan);
+ const invoiceValid=!invoice||(subtotal<10000000||docNumber.replace(/\D/g,"").length>0);
+ const canConfirm=cart.length>0&&!!method&&subtotal>0&&mixedValid&&processorValid&&invoiceValid&&!busy;
+ async function requestInvoice(sale:Sale){const r=await fetch(ARCA_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"invoice",sale,customer:{name:customer.trim()||"Consumidor final",phone,email,docType,docNumber,ivaConditionId}})});const data=await r.json();if(!r.ok)throw new Error(data.error||"No se pudo facturar");const updated:Sale={...sale,invoiceStatus:"Facturada",invoiceType:data.invoiceType||"Factura C",invoiceNumber:data.invoiceNumber,invoicePointOfSale:data.pointOfSale,cae:data.cae,caeDueDate:data.caeDueDate};save(KEYS.sales,load<Sale[]>(KEYS.sales,[]).map(s=>s.id===sale.id?updated:s));setLastInvoice({invoiceNumber:data.invoiceNumber,cae:data.cae,caeDueDate:data.caeDueDate});setNotice(`Venta registrada y facturada con ARCA${data.invoiceNumber?` · ${data.invoiceNumber}`:""}.`)}
+ async function confirmSale(){if(!canConfirm)return;setBusy(true);setNotice("");setLastInvoice(null);const now=new Date().toISOString();const sale:Sale={id:Date.now(),items:cart.map(({stock,...i})=>i),customer:customer.trim(),total:subtotal,method,cashAmount:method==="Efectivo"?subtotal:method==="Pago mixto"?Number(cashAmount||0):0,otherAmount:method==="Pago mixto"?Number(otherAmount||0):method==="Efectivo"?0:subtotal,createdAt:now,provider:provider||undefined,feeRate:isProcessorMethod(feeMethod)?feeRate:0,feeBase,feeVat,commission,netTotal:netReceived,settlement:selectedPlan?.settlement,secondaryMethod:method==="Pago mixto"?secondaryMethod:undefined,invoiceRequested:invoice,invoiceStatus:invoice?"Pendiente":"No facturada",customerPhone:phone.trim(),customerEmail:email.trim(),customerDocType:invoice?docType:undefined,customerDocNumber:invoice?docNumber.trim():undefined,customerIvaConditionId:invoice?ivaConditionId:undefined};save(KEYS.sales,[sale,...load<Sale[]>(KEYS.sales,[])]);const updated=products.map(p=>{const i=cart.find(x=>x.productId===p.id);return i?{...p,stock:Math.max(0,p.stock-i.qty)}:p});setProducts(updated);save(KEYS.products,updated);if(sale.cashAmount>0){const m:CashMovement={id:sale.id,type:"Ingreso",concept:`Venta #${String(sale.id).slice(-6)}`,amount:sale.cashAmount,method:"Efectivo",note:customer.trim()||"Venta",createdAt:now,source:"sale"};save(KEYS.cash,[m,...load<CashMovement[]>(KEYS.cash,[])])}setCart([]);try{if(invoice){setNotice("Venta registrada. Solicitando CAE a ARCA...");await requestInvoice(sale)}else setNotice("Venta registrada sin facturar.")}catch(e){const message=e instanceof Error?e.message:"No se pudo conectar con ARCA";save(KEYS.sales,load<Sale[]>(KEYS.sales,[]).map(s=>s.id===sale.id?{...s,invoiceStatus:"Error"}:s));setNotice(`La venta quedó registrada, pero la factura no se emitió: ${message}`)}finally{setBusy(false)}}
+ const shareText=`Hola${customer?` ${customer}`:""}, te enviamos el comprobante de tu compra en City Phone por ${money.format(subtotal)}${lastInvoice?.invoiceNumber?`. Factura C ${lastInvoice.invoiceNumber}. CAE ${lastInvoice.cae||""}`:""}.`;
+ return <AppShell title="Ventas" subtitle="Registra ventas y decide en el momento si quieres emitir factura electrónica." active="Ventas"><section className="workspace-grid sales-workspace"><div className="card workspace-card"><div className="card-heading"><div><h2>Agregar productos</h2><p>Busca por nombre, categoría o código.</p></div></div><div className="search-field"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar producto..."/></div>{search.trim()&&<div style={{display:"grid",gap:8,marginTop:14}}>{results.map(p=><button key={p.id} onClick={()=>addProduct(p)} disabled={p.stock<=0} className="outline-action" style={{justifyContent:"space-between",width:"100%"}}><span>{p.name}</span><span>{money.format(p.price)} · Stock {p.stock}</span></button>)}</div>}<div style={{marginTop:18}}><h2>Carrito</h2>{cart.length===0?<div className="empty-state compact"><ShoppingCart size={30}/><b>No hay productos agregados</b></div>:<div className="sales-table">{cart.map(i=><div className="table-row" key={i.productId}><div><b>{i.name}</b><small>{money.format(i.price)} c/u</small></div><span style={{display:"flex",gap:6}}><button className="outline-action" onClick={()=>setCart(v=>v.map(x=>x.productId===i.productId?{...x,qty:Math.max(1,x.qty-1)}:x))}><Minus size={14}/></button><b>{i.qty}</b><button className="outline-action" onClick={()=>addProduct(products.find(p=>p.id===i.productId)!)}><Plus size={14}/></button></span><strong>{money.format(i.price*i.qty)}</strong><button className="ghost-button" onClick={()=>setCart(v=>v.filter(x=>x.productId!==i.productId))}><Trash2 size={15}/></button></div>)}</div>}<button className="primary-button full-button" style={{marginTop:16}} onClick={resetSale}><Plus size={18}/> Nueva venta</button></div></div><div className="card workspace-card sticky-summary"><h2>Resumen de venta</h2><div className="summary-line"><span>Venta bruta</span><strong>{money.format(subtotal)}</strong></div>{commission>0&&<div className="summary-line"><span>Comisiones + IVA</span><strong>-{money.format(commission)}</strong></div>}<div className="summary-line total-line"><span>Neto recibido</span><strong>{money.format(netReceived)}</strong></div><label className="field-label">Cliente <small>(opcional)</small><input value={customer} onChange={e=>setCustomer(e.target.value)}/></label><label className="field-label">Método de pago<select value={method} onChange={e=>{setMethod(e.target.value as PayMethod);setSecondaryMethod("");setCashAmount("");setOtherAmount("");clearProcessor()}}><option value="">Seleccionar</option>{["Efectivo","Débito","Crédito","QR","PIX","Transferencia","Pago mixto"].map(x=><option key={x}>{x}</option>)}</select></label>{method==="Pago mixto"&&<><label className="field-label">Monto efectivo<input type="number" value={cashAmount} onChange={e=>setCashAmount(e.target.value)}/></label><label className="field-label">Monto restante<input type="number" value={otherAmount} onChange={e=>setOtherAmount(e.target.value)}/></label><label className="field-label">Medio restante<select value={secondaryMethod} onChange={e=>{setSecondaryMethod(e.target.value as PayMethod);clearProcessor()}}><option value="">Seleccionar</option>{["Débito","Crédito","QR","PIX","Transferencia"].map(x=><option key={x}>{x}</option>)}</select></label></>}{isProcessorMethod(feeMethod)&&<><label className="field-label">Procesador / banco<select value={provider} onChange={e=>changeProvider(e.target.value)}><option value="">Seleccionar</option>{providers.map(p=><option key={p}>{p==="BBVA"?"BBVA (Francés)":p}</option>)}</select></label>{provider&&<label className="field-label">Comisión / acreditación<select value={planId} onChange={e=>setPlanId(e.target.value)}><option value="">Seleccionar</option>{availablePlans.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></label>}</>}
+ <div style={{marginTop:14,padding:14,border:"1px solid var(--border)",borderRadius:14,background:"var(--green-soft)"}}><label style={{display:"flex",gap:10,alignItems:"center",fontWeight:900}}><input type="checkbox" checked={invoice} onChange={e=>setInvoice(e.target.checked)}/> Registrar y facturar con ARCA</label><small style={{display:"block",marginTop:6}}>Al marcarlo, City Phone solicita una Factura C y CAE en el punto de venta 00002.</small>{invoice&&<div className="form-grid" style={{marginTop:12}}><label className="field-label">Documento<select value={docType} onChange={e=>setDocType(e.target.value)}><option>DNI</option><option>CUIT</option></select></label><label className="field-label">Número de documento<input value={docNumber} onChange={e=>setDocNumber(e.target.value)} placeholder={subtotal>=10000000?"Obligatorio por el monto":"Opcional para consumidor final"}/></label><label className="field-label">WhatsApp del cliente <small>(opcional)</small><input autoComplete="off" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Ej. 54911..."/></label><label className="field-label">Correo del cliente <small>(opcional)</small><input type="email" autoComplete="off" value={email} onChange={e=>setEmail(e.target.value)} placeholder="cliente@correo.com"/></label>{subtotal>=10000000&&!docNumber.replace(/\D/g,"")&&<small style={{gridColumn:"1 / -1",fontWeight:800}}>Para operaciones de $10.000.000 o más ARCA exige identificar al consumidor final.</small>}</div>}</div>
+ <button className="primary-button full-button" disabled={!canConfirm} onClick={confirmSale}>{busy?"Procesando...":invoice?"Registrar y facturar":"Confirmar venta"}</button>{notice&&<div style={{marginTop:10,fontSize:11,fontWeight:800}}>{notice}</div>}{lastInvoice&&<div style={{marginTop:10,padding:12,border:"1px solid var(--border)",borderRadius:12}}><b>Factura C {lastInvoice.invoiceNumber}</b><small style={{display:"block",marginTop:4}}>CAE: {lastInvoice.cae} · Vto.: {lastInvoice.caeDueDate}</small></div>}{lastInvoice&&<div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>{phone&&<button className="outline-action" onClick={()=>window.open(`https://wa.me/${phone.replace(/\D/g,"")}?text=${encodeURIComponent(shareText)}`,"_blank")}><MessageCircle size={15}/> WhatsApp</button>}{email&&<button className="outline-action" onClick={()=>window.location.href=`mailto:${email}?subject=${encodeURIComponent("Factura City Phone")}&body=${encodeURIComponent(shareText)}`}><Mail size={15}/> Correo</button>}</div>}<button className="ghost-button full-button" onClick={resetSale}><Trash2 size={16}/> Limpiar venta</button></div></section></AppShell>;
 }
