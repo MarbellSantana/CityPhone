@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarDays, DollarSign, ReceiptText, TrendingUp } from "lucide-react";
+import { BarChart3, CalendarDays, DollarSign, ReceiptText, TrendingUp, X } from "lucide-react";
 import AppShell from "../components/AppShell";
 import { CashClosure, KEYS, Sale, load, money } from "../lib/storage";
 
@@ -15,6 +15,7 @@ export default function ReportesPage() {
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState(0);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [dayModalOpen, setDayModalOpen] = useState(false);
 
   useEffect(() => {
     setSales(load<Sale[]>(KEYS.sales, []));
@@ -48,16 +49,25 @@ export default function ReportesPage() {
   const selectedClosure = closures.find(c => c.year === selectedYear && c.month === meses[selectedMonth]);
 
   const selectedDaySales = useMemo(() => selectedDay === null ? [] : selectedMonthSales.filter(s => new Date(s.createdAt).getDate() === selectedDay), [selectedDay, selectedMonthSales]);
+  const selectedDayTotal = selectedDaySales.reduce((sum,s)=>sum+s.total,0);
+  const selectedDayNet = selectedDaySales.reduce((sum,s)=>sum+(typeof s.netTotal === "number" ? s.netTotal : s.total-(s.commission||0)),0);
 
   function selectMonth(index:number) {
     setSelectedMonth(index);
     setSelectedDay(null);
+    setDayModalOpen(false);
+  }
+
+  function openDay(day:number) {
+    setSelectedDay(day);
+    setDayModalOpen(true);
   }
 
   function changeYear(year:number) {
     setSelectedYear(year);
     setSelectedMonth(0);
     setSelectedDay(null);
+    setDayModalOpen(false);
   }
 
   const yearSelector = <div style={{display:"inline-flex",gap:6,padding:4,border:"1px solid var(--border)",borderRadius:12,background:"#fff"}}>
@@ -71,7 +81,11 @@ export default function ReportesPage() {
       <div className="card kpi-card"><div className="kpi-top"><span className="icon-box"><CalendarDays size={19}/></span></div><div className="kpi-label">Meses con ventas</div><div className="kpi-value">{activeMonths}</div><div className="kpi-foot">De 12 meses de {selectedYear}</div></div>
     </section>
 
-    <section className="card section-gap"><div className="card-heading"><div><h2>Comparativa mensual {selectedYear}</h2><p>Enero a diciembre en un solo gráfico para comparar la facturación de todo el año.</p></div><span className="warning-circle" style={{background:"var(--green-soft)",color:"var(--green-dark)"}}><BarChart3 size={17}/></span></div><div style={{marginTop:26,overflowX:"auto"}}><div style={{minWidth:760,height:290,display:"flex",alignItems:"flex-end",gap:14,borderBottom:"1px solid var(--border)",padding:"10px 4px 28px"}}>{valores.map((item,index)=>{const height=item.total===0?4:Math.max(8,(item.total/max)*210);return <button key={item.mes} type="button" onClick={()=>selectMonth(index)} style={{flex:1,minWidth:42,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%",gap:8,border:0,background:"transparent",cursor:"pointer",padding:0}}><span style={{fontSize:10,fontWeight:800,color:"var(--muted)"}}>{money.format(item.total)}</span><div style={{width:"70%",maxWidth:42,height,borderRadius:"9px 9px 3px 3px",background:item.total===0?"#dcefe0":"var(--green-dark)",minHeight:4}}/><span style={{fontSize:10,fontWeight:800,color:index===selectedMonth?"var(--green-dark)":"#6e7872",whiteSpace:"nowrap"}}>{item.mes.slice(0,3)}</span></button>})}</div></div></section>
+    <section className="card section-gap" style={{padding:"18px 20px"}}>
+      <div className="card-heading"><div><h2>Comparativa mensual {selectedYear}</h2><p>Vista rápida de la facturación mensual.</p></div><span className="warning-circle" style={{background:"var(--green-soft)",color:"var(--green-dark)"}}><BarChart3 size={17}/></span></div>
+      <div style={{marginTop:16,overflowX:"auto"}}><div style={{minWidth:660,height:190,display:"flex",alignItems:"flex-end",gap:10,borderBottom:"1px solid var(--border)",padding:"6px 2px 24px"}}>{valores.map((item,index)=>{const height=item.total===0?4:Math.max(8,(item.total/max)*125);return <button key={item.mes} type="button" onClick={()=>selectMonth(index)} title={`${item.mes}: ${money.format(item.total)}`} style={{flex:1,minWidth:36,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%",gap:6,border:0,background:"transparent",cursor:"pointer",padding:0}}><div style={{width:"62%",maxWidth:32,height,borderRadius:"7px 7px 3px 3px",background:index===selectedMonth?"var(--green-dark)":item.total===0?"#dcefe0":"#8ab99a",minHeight:4}}/><span style={{fontSize:9,fontWeight:900,color:index===selectedMonth?"var(--green-dark)":"#77827c",whiteSpace:"nowrap"}}>{item.mes.slice(0,3)}</span></button>})}</div></div>
+      <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"center",marginTop:12,paddingTop:10,borderTop:"1px solid var(--border)"}}><div><small style={{fontWeight:800,color:"var(--muted)"}}>Mes seleccionado</small><div style={{fontWeight:900,marginTop:2}}>{meses[selectedMonth]}</div></div><div style={{textAlign:"right"}}><small style={{fontWeight:800,color:"var(--muted)"}}>{valores[selectedMonth].cantidad} venta(s)</small><div style={{fontSize:18,fontWeight:900,color:"var(--green-dark)",marginTop:2}}>{money.format(valores[selectedMonth].total)}</div></div></div>
+    </section>
 
     <section className="card section-gap">
       <div className="card-heading"><div><h2>Todo el año {selectedYear}</h2><p>Selecciona un mes para abrir su calendario y revisar las ventas día por día.</p></div></div>
@@ -79,7 +93,7 @@ export default function ReportesPage() {
     </section>
 
     <section className="card section-gap">
-      <div className="card-heading"><div><h2>{meses[selectedMonth]} {selectedYear}</h2><p>Haz clic en un día para ver todas las ventas registradas en esa fecha.</p></div><CalendarDays size={20}/></div>
+      <div className="card-heading"><div><h2>{meses[selectedMonth]} {selectedYear}</h2><p>Haz clic en un día para abrir el detalle completo de sus ventas.</p></div><CalendarDays size={20}/></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(72px,1fr))",gap:8,marginTop:18,overflowX:"auto"}}>
         {weekDays.map(d=><div key={d} style={{fontSize:10,fontWeight:900,color:"var(--muted)",textAlign:"center",padding:6}}>{d}</div>)}
         {Array.from({length:firstWeekday}).map((_,i)=><div key={`empty-${i}`}/>)}
@@ -87,15 +101,10 @@ export default function ReportesPage() {
           const daySales=selectedMonthSales.filter(s=>new Date(s.createdAt).getDate()===day);
           const dayTotal=daySales.reduce((sum,s)=>sum+s.total,0);
           const active=selectedDay===day;
-          return <button key={day} type="button" onClick={()=>setSelectedDay(day)} style={{minHeight:82,border:active?"2px solid var(--green-dark)":"1px solid var(--border)",borderRadius:12,background:active?"var(--green-soft)":"#fff",padding:9,textAlign:"left",cursor:"pointer"}}><div style={{fontSize:12,fontWeight:900}}>{day}</div><div style={{fontSize:9,color:"var(--muted)",marginTop:8}}>{daySales.length?`${daySales.length} venta(s)`:"Sin ventas"}</div>{daySales.length>0&&<div style={{fontSize:10,fontWeight:900,color:"var(--green-dark)",marginTop:3}}>{money.format(dayTotal)}</div>}</button>
+          return <button key={day} type="button" onClick={()=>openDay(day)} style={{minHeight:82,border:active?"2px solid var(--green-dark)":"1px solid var(--border)",borderRadius:12,background:active?"var(--green-soft)":"#fff",padding:9,textAlign:"left",cursor:"pointer"}}><div style={{fontSize:12,fontWeight:900}}>{day}</div><div style={{fontSize:9,color:"var(--muted)",marginTop:8}}>{daySales.length?`${daySales.length} venta(s)`:"Sin ventas"}</div>{daySales.length>0&&<div style={{fontSize:10,fontWeight:900,color:"var(--green-dark)",marginTop:3}}>{money.format(dayTotal)}</div>}</button>
         })}
       </div>
     </section>
-
-    {selectedDay!==null&&<section className="card section-gap">
-      <div className="card-heading"><div><h2>Ventas del {selectedDay} de {meses[selectedMonth]} de {selectedYear}</h2><p>Detalle de las operaciones registradas ese día.</p></div></div>
-      {selectedDaySales.length===0?<div className="empty-state compact"><CalendarDays size={30}/><b>No hubo ventas este día</b><span>Cuando haya ventas aparecerán aquí automáticamente.</span></div>:<div className="sales-table"><div className="table-head"><span>Hora</span><span>Cliente</span><span>Pago</span><span>Factura</span><span>Total</span></div>{selectedDaySales.map(s=><div className="table-row" key={s.id}><div><b>{new Date(s.createdAt).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}</b><small>Venta #{String(s.id).slice(-6)}</small></div><span>{s.customer||"Consumidor final"}</span><span>{s.method}</span><span>{s.invoiceStatus==="Facturada"?`${s.invoiceType||"Factura C"} ${s.invoiceNumber||""}`:s.invoiceStatus||"Sin factura"}</span><strong>{money.format(s.total)}</strong></div>)}</div>}
-    </section>}
 
     <section className="card section-gap">
       <div className="card-heading"><div><h2>Cierre de caja · {meses[selectedMonth]} {selectedYear}</h2><p>Se completa automáticamente cuando cierras el mes desde Caja.</p></div><ReceiptText size={20}/></div>
@@ -109,5 +118,15 @@ export default function ReportesPage() {
         {Object.keys(selectedClosure.expenseBreakdown||{}).length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10,marginTop:14}}>{Object.entries(selectedClosure.expenseBreakdown).sort((a,b)=>b[1]-a[1]).map(([name,total])=><div key={name} style={{border:"1px solid var(--border)",borderRadius:12,padding:12}}><small style={{fontWeight:800,color:"var(--muted)"}}>{name}</small><div style={{fontWeight:900,fontSize:17,marginTop:4}}>{money.format(total)}</div></div>)}</div>}
       </>}
     </section>
+
+    {dayModalOpen&&selectedDay!==null&&<div role="dialog" aria-modal="true" aria-label={`Ventas del ${selectedDay} de ${meses[selectedMonth]}`} style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(18,27,22,.42)",display:"flex",alignItems:"center",justifyContent:"center",padding:18}} onMouseDown={e=>{if(e.target===e.currentTarget)setDayModalOpen(false)}}>
+      <div style={{width:"min(860px,96vw)",maxHeight:"84vh",overflowY:"auto",background:"#fff",borderRadius:20,border:"1px solid var(--border)",boxShadow:"0 24px 70px rgba(0,0,0,.18)",padding:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,borderBottom:"1px solid var(--border)",paddingBottom:14}}><div><small style={{fontWeight:900,color:"var(--green-dark)"}}>{meses[selectedMonth]} {selectedYear}</small><h2 style={{margin:"4px 0 0"}}>Ventas del día {selectedDay}</h2><p style={{margin:"5px 0 0",color:"var(--muted)",fontSize:11}}>{selectedDaySales.length ? `${selectedDaySales.length} operación(es) registradas` : "No hubo ventas registradas"}</p></div><button type="button" className="ghost-button" onClick={()=>setDayModalOpen(false)} aria-label="Cerrar detalle"><X size={18}/></button></div>
+        {selectedDaySales.length===0?<div className="empty-state compact" style={{marginTop:18}}><CalendarDays size={30}/><b>No hubo ventas este día</b></div>:<>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10,marginTop:16}}><div style={{border:"1px solid var(--border)",borderRadius:14,padding:12}}><small style={{fontWeight:800,color:"var(--muted)"}}>Venta bruta</small><div style={{fontSize:20,fontWeight:900,marginTop:4}}>{money.format(selectedDayTotal)}</div></div><div style={{border:"1px solid var(--border)",borderRadius:14,padding:12}}><small style={{fontWeight:800,color:"var(--muted)"}}>Venta neta</small><div style={{fontSize:20,fontWeight:900,marginTop:4,color:"var(--green-dark)"}}>{money.format(selectedDayNet)}</div></div><div style={{border:"1px solid var(--border)",borderRadius:14,padding:12}}><small style={{fontWeight:800,color:"var(--muted)"}}>Operaciones</small><div style={{fontSize:20,fontWeight:900,marginTop:4}}>{selectedDaySales.length}</div></div></div>
+          <div style={{display:"grid",gap:10,marginTop:16}}>{selectedDaySales.map(s=><article key={s.id} style={{border:"1px solid var(--border)",borderRadius:15,padding:14}}><div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start"}}><div><b style={{fontSize:12}}>Venta #{String(s.id).slice(-6)}</b><small style={{display:"block",marginTop:3,color:"var(--muted)"}}>{new Date(s.createdAt).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}</small></div><strong style={{fontSize:16}}>{money.format(s.total)}</strong></div><div style={{display:"grid",gridTemplateColumns:"1.4fr .9fr .9fr",gap:12,marginTop:12,paddingTop:11,borderTop:"1px solid var(--border)"}}><div><small style={{fontWeight:800,color:"var(--muted)"}}>Productos</small><div style={{marginTop:4,fontSize:11,fontWeight:800}}>{s.items.map(i=>`${i.qty}× ${i.name} · ${money.format(i.price)}`).join(" / ")}</div></div><div><small style={{fontWeight:800,color:"var(--muted)"}}>Pago</small><div style={{marginTop:4,fontSize:11,fontWeight:900}}>{s.method}{s.secondaryMethod?` + ${s.secondaryMethod}`:""}</div>{s.provider&&<small style={{display:"block",marginTop:3}}>{s.provider}{s.feeRate?` · ${s.feeRate}% + IVA`:""}</small>}</div><div><small style={{fontWeight:800,color:"var(--muted)"}}>Neto</small><div style={{marginTop:4,fontSize:11,fontWeight:900,color:"var(--green-dark)"}}>{money.format(typeof s.netTotal === "number" ? s.netTotal : s.total-(s.commission||0))}</div>{(s.commission||0)>0&&<small style={{display:"block",marginTop:3}}>Comisión: {money.format(s.commission||0)}</small>}</div></div></article>)}</div>
+        </>}
+      </div>
+    </div>}
   </AppShell>;
 }
