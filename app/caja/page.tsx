@@ -96,16 +96,16 @@ export default function CajaPage() {
     setShowClose(false);
   }
 
-  return <AppShell title="Caja" subtitle="Controla ingresos, egresos, gastos y cierres mensuales." active="Caja">
+  return <AppShell
+    title="Caja"
+    subtitle="Controla ingresos, egresos, gastos y cierres mensuales."
+    active="Caja"
+    titleAction={<button className="outline-action" onClick={() => setShowClose(true)}><CheckCircle2 size={17}/> Cerrar mes</button>}
+  >
     <section className="kpis page-kpis">
       <div className="card kpi-card"><div className="kpi-top"><span className="icon-box"><Wallet size={19}/></span></div><div className="kpi-label">Saldo actual</div><div className="kpi-value">{money.format(totals.balance)}</div><div className="kpi-foot">{movements.length ? `${movements.length} movimientos registrados` : "Caja sin movimientos"}</div></div>
       <div className="card kpi-card"><div className="kpi-top"><span className="icon-box"><ArrowDownLeft size={19}/></span></div><div className="kpi-label">Ingresos</div><div className="kpi-value">{money.format(totals.income)}</div><div className="kpi-foot">{movements.filter(m => m.type === "Ingreso").length} movimientos</div></div>
       <div className="card kpi-card"><div className="kpi-top"><span className="icon-box"><ArrowUpRight size={19}/></span></div><div className="kpi-label">Egresos</div><div className="kpi-value">{money.format(totals.expenses)}</div><div className="kpi-foot">{movements.filter(m => m.type === "Egreso").length} movimientos</div></div>
-    </section>
-
-    <section className="section-gap" style={{display:"flex", justifyContent:"flex-end", gap:10, flexWrap:"wrap"}}>
-      <button className="outline-action" onClick={() => setShowClose(true)}><CheckCircle2 size={17}/> Cerrar mes</button>
-      <button className="primary-button" onClick={() => setOpen(true)}><Plus size={18}/> Nuevo movimiento</button>
     </section>
 
     {open && <section className="card workspace-card section-gap">
@@ -122,7 +122,13 @@ export default function CajaPage() {
     </section>}
 
     <section className="card workspace-card section-gap">
-      <div className="card-heading"><div><h2>Movimientos de caja</h2><p>Ingresos y egresos registrados.</p></div><select className="period-select" value={period} onChange={e => setPeriod(e.target.value)}><option>Hoy</option><option>Esta semana</option><option>Este mes</option></select></div>
+      <div className="card-heading">
+        <div><h2>Movimientos de caja</h2><p>Ingresos y egresos registrados.</p></div>
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <button className="primary-button" onClick={() => setOpen(true)}><Plus size={18}/> Nuevo movimiento</button>
+          <select className="period-select" value={period} onChange={e => setPeriod(e.target.value)}><option>Hoy</option><option>Esta semana</option><option>Este mes</option></select>
+        </div>
+      </div>
       {!hydrated ? <div className="empty-state"><b>Cargando movimientos...</b></div> : filtered.length === 0 ? <div className="empty-state"><Wallet size={34}/><b>Todavía no hay movimientos</b><span>Los cobros en efectivo y movimientos manuales aparecerán aquí.</span></div> : <div className="sales-table">
         <div className="table-head"><span>Fecha</span><span>Concepto</span><span>Tipo</span><span>Método</span><span>Monto</span></div>
         {filtered.map(m => <div className="table-row" key={m.id}><div><b>{new Date(m.createdAt).toLocaleDateString("es-AR")}</b><small>{new Date(m.createdAt).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})} · {m.note || "Sin observación"}</small></div><span>{m.concept}{m.type === "Egreso" && m.category ? <small style={{display:"block"}}>{m.category}</small> : null}</span><span className="method">{m.type}</span><span>{m.method}</span><strong>{m.type === "Egreso" ? "-" : "+"}{money.format(m.amount)}</strong>{m.source !== "sale" && <button className="ghost-button" onClick={() => removeMovement(m.id)} title="Eliminar"><Trash2 size={14}/></button>}</div>)}
