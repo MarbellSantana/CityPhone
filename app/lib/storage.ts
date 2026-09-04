@@ -50,11 +50,86 @@ export const KEYS = {
   localLoans:"cityphone_local_loans_v1",
 };
 
+export const CLOUD_ENDPOINT = "https://yftaloxtylijudnoewrm.supabase.co/functions/v1/cityphone-sync";
+export const CLOUD_DIRTY_KEY = "cityphone_cloud_dirty_v1";
+export const CLOUD_LAST_SYNC_KEY = "cityphone_cloud_last_sync_v1";
+
+const cloudKeys = new Set<string>(Object.values(KEYS));
+const pushQueues = new Map<string, Promise<void>>();
+
 export function load<T>(key:string, fallback:T):T {
   if (typeof window === "undefined") return fallback;
   try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; }
 }
-export function save<T>(key:string, value:T) {
-  if (typeof window !== "undefined") localStorage.setItem(key, JSON.stringify(value));
+
+function readDirty():Record<string,number> {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem(CLOUD_DIRTY_KEY) || "{}") as Record<string,number>; } catch { return {}; }
 }
+
+function writeDirty(value:Record<string,number>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CLOUD_DIRTY_KEY, JSON.stringify(value));
+}
+
+export function getDirtyKeys():string[] {
+  return Object.keys(readDirty());
+}
+
+export function clearDirtyKeys(keys:string[]) {
+  const dirty = readDirty();
+  let changed = false;
+  for (const key of keys) {
+    if (key in dirty) { delete dirty[key]; changed = true; }
+  }
+  if (changed) writeDirty(dirty);
+}
+
+function markDirty(key:string) {
+  const dirty = readDirty();
+  dirty[key] = Date.now();
+  writeDirty(dirty);
+}
+
+async function cloudRequest<T>(body:Record<string,unknown>):Promise<T> {
+  const r = await fetch(CLOUD_ENDPOINT, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(body),
+    cache:"no-store",
+  });
+  const data = await r.json().catch(()=>({}));
+  if (!r.ok || data?.ok === false) throw new Error(data?.error || "No se pudo sincronizar con la nube");
+  return data as T;
+}
+
+export async function cloudPull():Promise<{state:Record<string,unknown>;updatedAt:Record<string,string>}> {
+  return cloudRequest({action:"pull"});
+}
+
+export async function cloudBootstrap(state:Record<string,unknown>, dirtyKeys:string[]):Promise<{state:Record<string,unknown>;updatedAt:Record<string,string>}> {
+  return cloudRequest({action:"bootstrap",state,dirtyKeys});
+}
+
+async function pushCloud<T>(key:string, value:T) {
+  await cloudRequest({action:"push",key,value});
+  if (typeof window !== "undefined" && localStorage.getItem(key) === JSON.stringify(value)) clearDirtyKeys([key]);
+  if (typeof window !== "undefined") localStorage.setItem(CLOUD_LAST_SYNC_KEY, new Date().toISOString());
+}
+
+export function save<T>(key:string, value:T) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, JSON.stringify(value));
+  if (!cloudKeys.has(key)) return;
+
+  markDirty(key);
+  const previous = pushQueues.get(key) ?? Promise.resolve();
+  const next = previous
+    .catch(()=>undefined)
+    .then(()=>pushCloud(key,value))
+    .catch(()=>undefined)
+    .finally(()=>{ if (pushQueues.get(key) === next) pushQueues.delete(key); });
+  pushQueues.set(key,next);
+}
+
 export const money = new Intl.NumberFormat("es-AR", { style:"currency", currency:"ARS", maximumFractionDigits:0 });
