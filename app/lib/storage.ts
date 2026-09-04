@@ -33,7 +33,7 @@ export type Sale = {
 };
 export type CashMovement = { id:number; type:"Ingreso"|"Egreso"; concept:string; amount:number; method:string; note:string; createdAt:string; source?:string; category?:string };
 export type CashClosure = { id:number; month:string; year:number; income:number; expenses:number; balance:number; movementCount:number; expenseBreakdown:Record<string,number>; closedAt:string };
-export type Repair = { id:number; nombre:string; apellido:string; telefono:string; email:string; equipo:string; motivo:string; precio:number; estado:string; createdAt:string };
+export type Repair = { id:number; nombre:string; apellido:string; telefono:string; email:string; equipo:string; motivo:string; precio:number; estado:string; createdAt:string; diagnostico?:string; reparacionRecomendada?:string; diagnosticadoAt?:string };
 export type Quote = { id:number; cliente:string; telefono:string; equipo:string; reparacion:string; costo:number; precio:number; estado:string; createdAt:string };
 export type Part = { id:number; name:string; model:string; cost:number; price:number; stock:number; minStock:number };
 export type LocalLoan = { id:number; product:string; date:string; store:string; createdAt:string };
