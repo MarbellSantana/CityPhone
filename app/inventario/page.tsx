@@ -88,15 +88,37 @@ export default function InventarioPage() {
           <div className="search-field grow"><Search size={18}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar producto..." /></div>
           <select className="filter-select" value={category} onChange={e => setCategory(e.target.value)}><option>Todas las categorías</option>{categories.map(c => <option key={c}>{c}</option>)}</select>
         </div>
-        <div className="inventory-table">
-          <div className="inventory-head"><span>Producto</span><span>Categoría</span><span>Costo</span><span>Precio venta</span><span>Stock</span><span>Acciones</span></div>
-          {filtered.length === 0 ? <div className="empty-state compact"><Box size={34}/><b>{products.length ? "Sin resultados" : "Inventario vacío"}</b><span>{products.length ? "Prueba con otra búsqueda o categoría." : "Los productos que cargues aparecerán aquí automáticamente."}</span></div> : filtered.map(p => <div className="inventory-head" key={p.id} style={{textTransform:"none", fontSize:11, borderTop:"1px solid #eef2ef", color:"var(--black)", alignItems:"center"}}>
-            <span><b>{p.name}</b>{p.code && <small style={{display:"block", color:"var(--muted)"}}>{p.code}</small>}</span>
-            <span>{p.category}</span><span>{money.format(p.cost)}</span><span>{money.format(p.price)}</span>
-            <span><b style={{color:p.stock <= p.minStock ? "var(--danger)" : "inherit"}}>{p.stock}</b> <small style={{color:"var(--muted)"}}>mín. {p.minStock}</small></span>
-            <span style={{display:"flex", gap:6, flexWrap:"wrap"}}><button className="outline-action" onClick={() => adjustStock(p.id,-1)} title="Restar stock"><Minus size={14}/></button><button className="outline-action" onClick={() => adjustStock(p.id,1)} title="Sumar stock"><Plus size={14}/></button><button className="outline-action" onClick={() => removeProduct(p.id)} title="Eliminar"><Trash2 size={14}/></button></span>
-          </div>)}
-        </div>
+
+        {filtered.length === 0 ? <div className="empty-state compact"><Box size={34}/><b>{products.length ? "Sin resultados" : "Inventario vacío"}</b><span>{products.length ? "Prueba con otra búsqueda o categoría." : "Los productos que cargues aparecerán aquí automáticamente."}</span></div> :
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,marginTop:18}}>
+          {filtered.map(p => <article key={p.id} style={{border:"1px solid var(--border)",borderRadius:16,padding:16,background:"#fff",display:"flex",flexDirection:"column",gap:12,minWidth:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+              <div style={{minWidth:0}}>
+                <h3 style={{margin:0,fontSize:15,fontWeight:900,overflowWrap:"anywhere"}}>{p.name}</h3>
+                {p.code && <small style={{display:"block",marginTop:3,color:"var(--muted)",fontWeight:700}}>{p.code}</small>}
+              </div>
+              <span style={{fontSize:9,fontWeight:900,padding:"5px 8px",borderRadius:999,background:"var(--green-soft)",color:"var(--green-dark)",whiteSpace:"nowrap"}}>{p.category}</span>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{padding:10,borderRadius:12,background:"#f8faf8"}}><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Costo</small><strong style={{display:"block",marginTop:3}}>{money.format(p.cost)}</strong></div>
+              <div style={{padding:10,borderRadius:12,background:"#f8faf8"}}><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Precio venta</small><strong style={{display:"block",marginTop:3}}>{money.format(p.price)}</strong></div>
+            </div>
+
+            <div style={{padding:12,borderRadius:12,border:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+              <div><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Stock actual</small><strong style={{fontSize:20,color:p.stock <= p.minStock ? "var(--danger)" : "var(--black)"}}>{p.stock}</strong></div>
+              <div style={{textAlign:"right"}}><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Stock mínimo</small><strong>{p.minStock}</strong></div>
+            </div>
+
+            {p.stock <= p.minStock && <div style={{fontSize:10,fontWeight:900,color:"var(--danger)",display:"flex",alignItems:"center",gap:6}}><AlertTriangle size={14}/> Necesita reposición</div>}
+
+            <div style={{display:"flex",gap:8,marginTop:"auto",paddingTop:2}}>
+              <button className="outline-action" style={{flex:1,justifyContent:"center"}} onClick={() => adjustStock(p.id,-1)} title="Restar stock"><Minus size={14}/></button>
+              <button className="outline-action" style={{flex:1,justifyContent:"center"}} onClick={() => adjustStock(p.id,1)} title="Sumar stock"><Plus size={14}/></button>
+              <button className="outline-action" style={{flex:1,justifyContent:"center"}} onClick={() => removeProduct(p.id)} title="Eliminar"><Trash2 size={14}/></button>
+            </div>
+          </article>)}
+        </div>}
       </section>
 
       {open && <section className="card workspace-card section-gap">
