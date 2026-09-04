@@ -32,6 +32,7 @@ export default function InventarioPage() {
   }), [products, search, category]);
 
   const restock = useMemo(() => products.filter(p => p.stock <= p.minStock), [products]);
+  const restockUnits = useMemo(() => restock.reduce((sum,p) => sum + Math.max(1, p.minStock - p.stock), 0), [restock]);
 
   function addProduct(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -143,13 +144,25 @@ export default function InventarioPage() {
     </>}
 
     {tab === "reposicion" && <section className="card workspace-card">
-      <div className="card-heading"><div><h2>Reposición</h2><p>Se actualiza automáticamente según el stock real del inventario.</p></div></div>
-      <div className="inventory-table">
-        <div className="inventory-head"><span>Producto</span><span>Categoría</span><span>Stock actual</span><span>Stock mínimo</span><span>Faltante</span><span>Acción</span></div>
-        {restock.length === 0 ? <div className="empty-state compact"><AlertTriangle size={32}/><b>No hay productos para reponer</b><span>Cuando una venta deje un producto en su stock mínimo o por debajo, aparecerá aquí automáticamente.</span></div> : restock.map(p => <div className="inventory-head" key={p.id} style={{textTransform:"none", fontSize:11, borderTop:"1px solid #eef2ef", color:"var(--black)", alignItems:"center"}}>
-          <span><b>{p.name}</b></span><span>{p.category}</span><span style={{color:"var(--danger)", fontWeight:900}}>{p.stock}</span><span>{p.minStock}</span><span>{Math.max(0, p.minStock - p.stock)}</span><span><button className="outline-action" onClick={() => adjustStock(p.id,1)}><Plus size={14}/> Sumar stock</button></span>
-        </div>)}
+      <div className="card-heading">
+        <div><h2>Lista de reposición</h2><p>Se arma automáticamente con todo lo que está en stock mínimo o por debajo.</p></div>
+        {restock.length > 0 && <div style={{textAlign:"right"}}><strong style={{display:"block",fontSize:18}}>{restock.length}</strong><small style={{color:"var(--muted)",fontWeight:800}}>productos · {restockUnits} unidades</small></div>}
       </div>
+
+      {restock.length === 0 ? <div className="empty-state compact"><AlertTriangle size={32}/><b>No hay productos para reponer</b><span>Cuando un producto llegue al stock mínimo o quede por debajo, aparecerá aquí automáticamente.</span></div> :
+      <div style={{display:"grid",gap:10,marginTop:16}}>
+        {restock.map((p,index) => {
+          const needed = Math.max(1, p.minStock - p.stock);
+          return <div key={p.id} style={{display:"grid",gridTemplateColumns:"36px minmax(0,1.8fr) minmax(90px,.7fr) minmax(90px,.7fr) minmax(110px,.8fr) auto",gap:12,alignItems:"center",padding:"12px 14px",border:"1px solid var(--border)",borderRadius:14,background:"#fff"}}>
+            <div style={{width:30,height:30,borderRadius:10,display:"grid",placeItems:"center",background:"var(--green-soft)",fontWeight:900,color:"var(--green-dark)"}}>{index+1}</div>
+            <div style={{minWidth:0}}><b style={{display:"block",overflowWrap:"anywhere"}}>{p.name}</b><small style={{color:"var(--muted)"}}>{p.category}{p.code ? ` · ${p.code}` : ""}</small></div>
+            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Stock actual</small><strong style={{color:"var(--danger)",fontSize:16}}>{p.stock}</strong></div>
+            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Mínimo</small><strong>{p.minStock}</strong></div>
+            <div style={{padding:"8px 10px",borderRadius:10,background:"var(--green-soft)"}}><small style={{display:"block",color:"var(--green-dark)",fontWeight:900}}>Reponer</small><strong style={{fontSize:17}}>{needed} {needed === 1 ? "unidad" : "unidades"}</strong></div>
+            <button className="outline-action" onClick={() => adjustStock(p.id,1)}><Plus size={14}/> Sumar stock</button>
+          </div>;
+        })}
+      </div>}
     </section>}
 
     {tab === "prestamos" && <>
