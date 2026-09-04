@@ -11,7 +11,7 @@ export default function ProductCatalogSeed() {
     if (localStorage.getItem(CATALOG_VERSION)) return;
     localStorage.setItem(KEYS.products, JSON.stringify(INITIAL_PRODUCTS));
     localStorage.setItem(CATALOG_VERSION, "loaded");
-    window.dispatchEvent(new Event("cityphone-products-seeded"));
+    window.location.reload();
   }, []);
   return null;
 }
