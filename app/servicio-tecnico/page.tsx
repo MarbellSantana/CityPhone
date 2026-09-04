@@ -27,10 +27,17 @@ export default function ServicioTecnicoPage() {
   }), [repairs, search, status]);
 
   function guardarIngreso(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const f = new FormData(event.currentTarget);
+    event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const enviarWhatsapp = submitter?.value === "whatsapp";
+    const f = new FormData(event.currentTarget);
     const r:Repair = { id:Date.now(), nombre:String(f.get("nombre")||"").trim(), apellido:String(f.get("apellido")||"").trim(), telefono:String(f.get("telefono")||"").trim(), email:String(f.get("email")||"").trim(), equipo:String(f.get("equipo")||"").trim(), motivo:String(f.get("motivo")||"").trim(), precio:Number(f.get("precio")||0), estado:"Ingresado", createdAt:new Date().toISOString() };
     if (!r.nombre || !r.telefono || !r.equipo || !r.motivo) return;
-    setRepairs(v => [r,...v]); event.currentTarget.reset(); setShowIngreso(false); setTab("ordenes");
+    setRepairs(v => [r,...v]);
+    if (enviarWhatsapp) {
+      whatsapp(r.telefono, `Hola ${r.nombre}, recibimos tu ${r.equipo} en City Phone para ${r.motivo}. Quedó ingresado al taller y te avisaremos por este medio cuando tengamos novedades.`);
+    }
+    event.currentTarget.reset(); setShowIngreso(false); setTab("ordenes");
   }
   function guardarCotizacion(event:FormEvent<HTMLFormElement>) {
     event.preventDefault(); const f = new FormData(event.currentTarget);
@@ -50,7 +57,7 @@ export default function ServicioTecnicoPage() {
   }
 
   return <AppShell title="Servicio técnico" subtitle="Gestiona equipos, reparaciones, cotizaciones y repuestos." active="Servicio técnico">
-    {showIngreso && <section className="card workspace-card" style={{marginBottom:16}}><div className="card-heading"><div><h2>Ingreso al taller</h2><p>Registra los datos del cliente y del equipo recibido.</p></div><button className="ghost-button" onClick={() => setShowIngreso(false)}><X size={17}/> Cerrar</button></div><form onSubmit={guardarIngreso}><div className="form-grid"><label className="field-label">Nombre<input name="nombre" required /></label><label className="field-label">Apellido<input name="apellido" /></label><label className="field-label">Teléfono<input name="telefono" required placeholder="Ej. 54911..." /></label><label className="field-label">Correo electrónico<input name="email" type="email" /></label><label className="field-label">Equipo<input name="equipo" required placeholder="Ej. iPhone 13" /></label><label className="field-label">Precio de reparación<input name="precio" type="number" min="0" defaultValue="0" /></label></div><label className="field-label">Motivo / reparación<input name="motivo" required /></label><button className="primary-button" type="submit">Guardar ingreso</button></form></section>}
+    {showIngreso && <section className="card workspace-card" style={{marginBottom:16}}><div className="card-heading"><div><h2>Ingreso al taller</h2><p>Registra los datos del cliente y del equipo recibido.</p></div><button className="ghost-button" onClick={() => setShowIngreso(false)}><X size={17}/> Cerrar</button></div><form onSubmit={guardarIngreso}><div className="form-grid"><label className="field-label">Nombre<input name="nombre" required /></label><label className="field-label">Apellido<input name="apellido" /></label><label className="field-label">Teléfono<input name="telefono" required placeholder="Ej. 54911..." /></label><label className="field-label">Correo electrónico<input name="email" type="email" /></label><label className="field-label">Equipo<input name="equipo" required placeholder="Ej. iPhone 13" /></label><label className="field-label">Precio de reparación<input name="precio" type="number" min="0" defaultValue="0" /></label></div><label className="field-label">Motivo / reparación<input name="motivo" required /></label><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button className="primary-button" type="submit">Guardar ingreso</button><button className="outline-action" type="submit" name="action" value="whatsapp"><MessageCircle size={16}/> Guardar y enviar por WhatsApp</button></div></form></section>}
 
     <div className="subnav-tabs"><button className={tab === "ordenes" ? "active" : ""} onClick={() => setTab("ordenes")}><Wrench size={16}/> Órdenes de reparación</button><button className={tab === "cotizaciones" ? "active" : ""} onClick={() => setTab("cotizaciones")}><Calculator size={16}/> Cotizaciones</button><button className={tab === "repuestos" ? "active" : ""} onClick={() => setTab("repuestos")}><Box size={16}/> Inventario de repuestos</button></div>
 
