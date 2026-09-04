@@ -13,7 +13,7 @@ const nav = [
   [BarChart3, "Meses y reportes", "/reportes"],
 ] as const;
 
-export default function AppShell({ title, subtitle, active, children, action }: { title: string; subtitle: string; active: string; children: React.ReactNode; action?: React.ReactNode }) {
+export default function AppShell({ title, subtitle, active, children, action, titleAction }: { title: string; subtitle: string; active: string; children: React.ReactNode; action?: React.ReactNode; titleAction?: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="city-shell">
@@ -36,7 +36,11 @@ export default function AppShell({ title, subtitle, active, children, action }: 
         </header>
 
         <section className="page-title-row">
-          <div><span className="eyebrow">CITY PHONE · GESTIÓN</span><h1>{title}</h1><p>{subtitle}</p></div>
+          <div>
+            <span className="eyebrow">CITY PHONE · GESTIÓN</span>
+            <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}><h1>{title}</h1>{titleAction}</div>
+            <p>{subtitle}</p>
+          </div>
           {action}
         </section>
         {children}
