@@ -81,39 +81,39 @@ export default function InventarioPage() {
       <button className={tab === "prestamos" ? "active" : ""} onClick={() => setTab("prestamos")}><CalendarDays size={16}/> Préstamos locales</button>
     </div>
 
-    {tab === "productos" && <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.65fr) minmax(300px,.75fr)",gap:16,alignItems:"start"}}>
+    {tab === "productos" && <div className="workspace-grid">
       <section className="card workspace-card" style={{minWidth:0}}>
-        <div className="card-heading"><div><h2>Productos cargados</h2><p>Consulta y administra todo el inventario desde aquí.</p></div></div>
-        <div className="toolbar-row">
+        <div className="card-heading"><div><h2>Productos cargados</h2><p>Consulta y administra todo el inventario desde aquí.</p></div><span className="count-badge">{products.length} productos</span></div>
+        <div className="toolbar-row" style={{marginTop:16}}>
           <div className="search-field grow"><Search size={18}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar producto..." /></div>
           <select className="filter-select" value={category} onChange={e => setCategory(e.target.value)}><option>Todas las categorías</option>{categories.map(c => <option key={c}>{c}</option>)}</select>
         </div>
 
         {filtered.length === 0 ? <div className="empty-state compact"><Box size={34}/><b>{products.length ? "Sin resultados" : "Inventario vacío"}</b><span>{products.length ? "Prueba con otra búsqueda o categoría." : "Los productos que cargues aparecerán aquí automáticamente."}</span></div> :
-        <div style={{display:"grid",gridTemplateColumns:"1fr",gap:10,marginTop:16}}>
-          {filtered.map(p => <article key={p.id} style={{border:"1px solid var(--border)",borderRadius:14,padding:14,background:"#fff",display:"grid",gridTemplateColumns:"minmax(0,1.6fr) repeat(4,minmax(84px,.65fr)) auto",gap:12,alignItems:"center"}}>
+        <div style={{display:"grid",gap:8,marginTop:14}}>
+          {filtered.map(p => <article key={p.id} style={{border:"1px solid var(--border)",borderRadius:12,padding:"11px 12px",background:"#fff",display:"grid",gridTemplateColumns:"minmax(150px,1.6fr) repeat(4,minmax(62px,.6fr)) auto",gap:10,alignItems:"center"}}>
             <div style={{minWidth:0}}>
-              <h3 style={{margin:0,fontSize:14,fontWeight:900,overflowWrap:"anywhere"}}>{p.name}</h3>
-              <small style={{display:"block",marginTop:3,color:"var(--muted)",fontWeight:700}}>{p.category}{p.code ? ` · ${p.code}` : ""}</small>
-              {p.stock <= p.minStock && <small style={{display:"flex",alignItems:"center",gap:4,marginTop:5,color:"var(--danger)",fontWeight:900}}><AlertTriangle size={12}/> Necesita reposición</small>}
+              <h3 style={{margin:0,fontSize:12,fontWeight:900,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</h3>
+              <small style={{display:"block",marginTop:2,color:"var(--muted)",fontWeight:700,fontSize:9}}>{p.category}{p.code ? ` · ${p.code}` : ""}</small>
+              {p.stock <= p.minStock && <small style={{display:"flex",alignItems:"center",gap:4,marginTop:4,color:"var(--danger)",fontWeight:900,fontSize:8}}><AlertTriangle size={11}/> Reponer</small>}
             </div>
-            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Costo</small><strong>{money.format(p.cost)}</strong></div>
-            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Precio</small><strong>{money.format(p.price)}</strong></div>
-            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Stock</small><strong style={{color:p.stock <= p.minStock ? "var(--danger)" : "var(--black)"}}>{p.stock}</strong></div>
-            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800}}>Mínimo</small><strong>{p.minStock}</strong></div>
-            <div style={{display:"flex",gap:5}}>
-              <button className="outline-action" onClick={() => adjustStock(p.id,-1)} title="Restar stock"><Minus size={14}/></button>
-              <button className="outline-action" onClick={() => adjustStock(p.id,1)} title="Sumar stock"><Plus size={14}/></button>
-              <button className="ghost-button" onClick={() => removeProduct(p.id)} title="Eliminar"><Trash2 size={14}/></button>
+            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800,fontSize:8}}>Costo</small><strong style={{fontSize:10}}>{money.format(p.cost)}</strong></div>
+            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800,fontSize:8}}>Precio</small><strong style={{fontSize:10}}>{money.format(p.price)}</strong></div>
+            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800,fontSize:8}}>Stock</small><strong style={{fontSize:11,color:p.stock <= p.minStock ? "var(--danger)" : "var(--black)"}}>{p.stock}</strong></div>
+            <div><small style={{display:"block",color:"var(--muted)",fontWeight:800,fontSize:8}}>Mín.</small><strong style={{fontSize:11}}>{p.minStock}</strong></div>
+            <div style={{display:"flex",gap:4}}>
+              <button className="outline-action" onClick={() => adjustStock(p.id,-1)} title="Restar stock"><Minus size={13}/></button>
+              <button className="outline-action" onClick={() => adjustStock(p.id,1)} title="Sumar stock"><Plus size={13}/></button>
+              <button className="ghost-button" onClick={() => removeProduct(p.id)} title="Eliminar"><Trash2 size={13}/></button>
             </div>
           </article>)}
         </div>}
       </section>
 
-      <section className="card workspace-card" style={{position:"sticky",top:18}}>
-        <div className="card-heading"><div><h2>Nuevo producto</h2><p>Carga un artículo y aparecerá inmediatamente en la lista de al lado.</p></div></div>
+      <section className="card workspace-card" style={{position:"sticky",top:18,alignSelf:"start"}}>
+        <div className="card-heading"><div><h2>Nuevo producto</h2><p>Carga un artículo sin salir de la vista del inventario.</p></div></div>
         <form onSubmit={addProduct}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:11}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:4}}>
             <label className="field-label">Producto<input name="name" required placeholder="Ej. Funda silicona iPhone 13" /></label>
             <label className="field-label">Código <small>Opcional</small><input name="code" placeholder="SKU o código interno" /></label>
             <label className="field-label">Categoría<select name="category" defaultValue="Fundas">{categories.map(c => <option key={c}>{c}</option>)}</select></label>
@@ -122,7 +122,7 @@ export default function InventarioPage() {
             <label className="field-label">Stock inicial<input name="stock" type="number" min="0" step="1" required defaultValue="0" /></label>
             <label className="field-label">Stock mínimo<input name="minStock" type="number" min="0" step="1" defaultValue="0" /></label>
           </div>
-          <button className="primary-button" type="submit" style={{width:"100%",justifyContent:"center",marginTop:12}}><Plus size={16}/> Guardar producto</button>
+          <button className="primary-button" type="submit" style={{width:"100%",justifyContent:"center",marginTop:10}}><Plus size={16}/> Guardar producto</button>
         </form>
       </section>
     </div>}
