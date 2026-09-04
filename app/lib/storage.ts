@@ -17,6 +17,18 @@ export type Sale = {
   netTotal?:number;
   settlement?:string;
   secondaryMethod?:string;
+  invoiceRequested?:boolean;
+  invoiceStatus?:"No facturada"|"Pendiente"|"Facturada"|"Error";
+  invoiceType?:string;
+  invoiceNumber?:string;
+  invoicePointOfSale?:number;
+  cae?:string;
+  caeDueDate?:string;
+  invoicePdfUrl?:string;
+  customerPhone?:string;
+  customerEmail?:string;
+  customerDocType?:string;
+  customerDocNumber?:string;
 };
 export type CashMovement = { id:number; type:"Ingreso"|"Egreso"; concept:string; amount:number; method:string; note:string; createdAt:string; source?:string; category?:string };
 export type CashClosure = { id:number; month:string; year:number; income:number; expenses:number; balance:number; movementCount:number; expenseBreakdown:Record<string,number>; closedAt:string };
