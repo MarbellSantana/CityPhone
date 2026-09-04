@@ -19,7 +19,6 @@ const PLANS: Record<string, Partial<Record<ProcessorMethod, FeePlan[]>>> = {
       { id:"tc-deb-2d", label:"1,99% + IVA · 2 días hábiles", rate:1.99, settlement:"2 días hábiles" },
     ],
     "Crédito": [
-      { id:"tc-cre-instant", label:"4,4% + IVA · acreditación inmediata", rate:4.4, settlement:"En el momento" },
       { id:"tc-cre-5d", label:"2,5% + IVA · 5 días hábiles", rate:2.5, settlement:"5 días hábiles" },
     ],
     "QR": [{ id:"tc-qr", label:"0,8% + IVA · acreditación inmediata", rate:0.8, settlement:"En el momento" }],
@@ -28,7 +27,6 @@ const PLANS: Record<string, Partial<Record<ProcessorMethod, FeePlan[]>>> = {
   "BBVA": {
     "Débito": [{ id:"bbva-deb", label:"2,99% + IVA · 1 día", rate:2.99, settlement:"1 día" }],
     "Crédito": [
-      { id:"bbva-cre-2d", label:"5,49% + IVA · 2 días", rate:5.49, settlement:"2 días" },
       { id:"bbva-cre-10d", label:"2,99% + IVA · 10 días", rate:2.99, settlement:"10 días" },
     ],
     "QR": [
@@ -147,50 +145,23 @@ export default function VentasPage() {
     const now = new Date().toISOString();
     const settlement = provider === "Santander" ? "Según condiciones Santander" : selectedPlan?.settlement || "";
     const sale:Sale = {
-      id: Date.now(),
-      items: cart.map(({stock,...i}) => i),
-      customer: customer.trim(),
-      total: subtotal,
-      method,
+      id: Date.now(), items: cart.map(({stock,...i}) => i), customer: customer.trim(), total: subtotal, method,
       cashAmount: method === "Efectivo" ? subtotal : method === "Pago mixto" ? Number(cashAmount || 0) : 0,
       otherAmount: method === "Pago mixto" ? Number(otherAmount || 0) : method === "Efectivo" ? 0 : subtotal,
-      createdAt: now,
-      provider: provider || undefined,
-      feeRate: isProcessorMethod(feeMethod) ? feeRate : 0,
-      feeBase,
-      feeVat,
-      commission,
-      netTotal: netReceived,
-      settlement: settlement || undefined,
+      createdAt: now, provider: provider || undefined, feeRate: isProcessorMethod(feeMethod) ? feeRate : 0,
+      feeBase, feeVat, commission, netTotal: netReceived, settlement: settlement || undefined,
       secondaryMethod: method === "Pago mixto" ? secondaryMethod : undefined,
     };
-
-    const sales = load<Sale[]>(KEYS.sales, []);
-    save(KEYS.sales, [sale, ...sales]);
-
+    save(KEYS.sales, [sale, ...load<Sale[]>(KEYS.sales, [])]);
     const updatedProducts = products.map(p => {
       const item = cart.find(i => i.productId === p.id);
       return item ? { ...p, stock: Math.max(0, p.stock - item.qty) } : p;
     });
-    setProducts(updatedProducts);
-    save(KEYS.products, updatedProducts);
-
-    const cashPart = sale.cashAmount;
-    if (cashPart > 0) {
-      const cash = load<CashMovement[]>(KEYS.cash, []);
-      const movement:CashMovement = {
-        id:sale.id,
-        type:"Ingreso",
-        concept:`Venta #${sale.id.toString().slice(-6)}`,
-        amount:cashPart,
-        method:"Efectivo",
-        note: customer.trim() || "Venta",
-        createdAt:now,
-        source:"sale",
-      };
-      save(KEYS.cash, [movement, ...cash]);
+    setProducts(updatedProducts); save(KEYS.products, updatedProducts);
+    if (sale.cashAmount > 0) {
+      const movement:CashMovement = { id:sale.id, type:"Ingreso", concept:`Venta #${sale.id.toString().slice(-6)}`, amount:sale.cashAmount, method:"Efectivo", note:customer.trim() || "Venta", createdAt:now, source:"sale" };
+      save(KEYS.cash, [movement, ...load<CashMovement[]>(KEYS.cash, [])]);
     }
-
     resetSale();
   }
 
@@ -199,53 +170,26 @@ export default function VentasPage() {
       <div className="card workspace-card">
         <div className="card-heading"><div><h2>Agregar productos</h2><p>Escribe el nombre, categoría o código. El inventario no se muestra completo en esta pantalla.</p></div></div>
         <div className="search-field"><Search size={18}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar producto..." /></div>
-        {search.trim() && <div style={{display:"grid", gap:8, marginTop:14}}>
-          {results.length === 0 ? <div className="empty-state compact"><Search size={28}/><b>Sin resultados</b><span>No encontramos un producto con esa búsqueda.</span></div> : results.map(p => <button key={p.id} onClick={() => addProduct(p)} disabled={p.stock <= 0} className="outline-action" style={{justifyContent:"space-between", width:"100%"}}><span>{p.name}</span><span>{money.format(p.price)} · Stock {p.stock}</span></button>)}
-        </div>}
-
-        <div style={{marginTop:18}}>
-          <div className="card-heading"><div><h2>Carrito</h2><p>{cart.length ? `${cart.length} producto(s) agregado(s)` : "Todavía no agregaste productos."}</p></div></div>
+        {search.trim() && <div style={{display:"grid",gap:8,marginTop:14}}>{results.length === 0 ? <div className="empty-state compact"><Search size={28}/><b>Sin resultados</b><span>No encontramos un producto con esa búsqueda.</span></div> : results.map(p => <button key={p.id} onClick={() => addProduct(p)} disabled={p.stock <= 0} className="outline-action" style={{justifyContent:"space-between",width:"100%"}}><span>{p.name}</span><span>{money.format(p.price)} · Stock {p.stock}</span></button>)}</div>}
+        <div style={{marginTop:18}}><div className="card-heading"><div><h2>Carrito</h2><p>{cart.length ? `${cart.length} producto(s) agregado(s)` : "Todavía no agregaste productos."}</p></div></div>
           {cart.length === 0 ? <div className="empty-state compact"><ShoppingCart size={30}/><b>No hay productos agregados</b><span>Busca un producto para comenzar la venta.</span></div> : <div className="sales-table">{cart.map(i => <div className="table-row" key={i.productId}><div><b>{i.name}</b><small>{money.format(i.price)} c/u</small></div><span style={{display:"flex",gap:6,alignItems:"center"}}><button className="outline-action" onClick={() => changeQty(i.productId,-1)}><Minus size={14}/></button><b>{i.qty}</b><button className="outline-action" onClick={() => changeQty(i.productId,1)}><Plus size={14}/></button></span><span className="method">Stock {i.stock}</span><strong>{money.format(i.price*i.qty)}</strong><button className="ghost-button" onClick={() => removeItem(i.productId)}><Trash2 size={15}/></button></div>)}</div>}
           <button className="primary-button full-button" style={{marginTop:16}} onClick={resetSale}><Plus size={18}/> Nueva venta</button>
         </div>
       </div>
-
       <div className="card workspace-card sticky-summary">
         <div className="card-heading"><div><h2>Resumen de venta</h2><p>El sistema calcula la comisión y el neto que realmente recibes.</p></div></div>
         <div className="summary-line"><span>Venta bruta</span><strong>{money.format(subtotal)}</strong></div>
-        {commission > 0 && <>
-          <div className="summary-line"><span>Comisión ({feeRate.toLocaleString("es-AR")}%)</span><strong>-{money.format(feeBase)}</strong></div>
-          <div className="summary-line"><span>IVA sobre comisión (21%)</span><strong>-{money.format(feeVat)}</strong></div>
-          <div className="summary-line"><span>Descuento total</span><strong>-{money.format(commission)}</strong></div>
-        </>}
+        {commission > 0 && <><div className="summary-line"><span>Comisión ({feeRate.toLocaleString("es-AR")}%)</span><strong>-{money.format(feeBase)}</strong></div><div className="summary-line"><span>IVA sobre comisión (21%)</span><strong>-{money.format(feeVat)}</strong></div><div className="summary-line"><span>Descuento total</span><strong>-{money.format(commission)}</strong></div></>}
         <div className="summary-line total-line"><span>Neto recibido</span><strong>{money.format(netReceived)}</strong></div>
-
         <label className="field-label">Cliente <small>(opcional)</small><input value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Nombre del cliente" /></label>
         <label className="field-label">Método de pago<select value={method} onChange={e => changeMethod(e.target.value as PayMethod)}><option value="" disabled>Seleccionar</option><option>Efectivo</option><option>Débito</option><option>Crédito</option><option>QR</option><option>PIX</option><option>Transferencia</option><option>Pago mixto</option></select></label>
-
-        {method === "Pago mixto" && <>
-          <label className="field-label">Monto en efectivo<input type="number" min="0" value={cashAmount} onChange={e => setCashAmount(e.target.value)} placeholder="0" /></label>
-          <label className="field-label">Monto restante<input type="number" min="0" value={otherAmount} onChange={e => setOtherAmount(e.target.value)} placeholder="0" /></label>
-          <label className="field-label">Medio del monto restante<select value={secondaryMethod} onChange={e => changeSecondaryMethod(e.target.value as PayMethod)}><option value="" disabled>Seleccionar</option><option>Débito</option><option>Crédito</option><option>QR</option><option>PIX</option><option>Transferencia</option></select></label>
-          <small style={{color:mixedValid?"var(--muted)":"var(--danger)"}}>Efectivo + restante debe ser exactamente {money.format(subtotal)}.</small>
-        </>}
-
-        {isProcessorMethod(feeMethod) && <>
-          <label className="field-label">Procesador / banco<select value={provider} onChange={e => changeProvider(e.target.value)}><option value="" disabled>Seleccionar</option>{providers.map(p => <option key={p}>{p === "BBVA" ? "BBVA (Francés)" : p}</option>)}</select></label>
-
-          {provider === "Santander" && <label className="field-label">Comisión Santander (%)<input type="number" min="0" step="0.01" value={santanderRate} onChange={e => setSantanderRate(e.target.value)} placeholder="Cargar porcentaje cuando lo confirmes" /><small>No se cargó una tasa fija porque todavía no tenemos el porcentaje confirmado.</small></label>}
-
+        {method === "Pago mixto" && <><label className="field-label">Monto en efectivo<input type="number" min="0" value={cashAmount} onChange={e => setCashAmount(e.target.value)} /></label><label className="field-label">Monto restante<input type="number" min="0" value={otherAmount} onChange={e => setOtherAmount(e.target.value)} /></label><label className="field-label">Medio del monto restante<select value={secondaryMethod} onChange={e => changeSecondaryMethod(e.target.value as PayMethod)}><option value="" disabled>Seleccionar</option><option>Débito</option><option>Crédito</option><option>QR</option><option>PIX</option><option>Transferencia</option></select></label></>}
+        {isProcessorMethod(feeMethod) && <><label className="field-label">Procesador / banco<select value={provider} onChange={e => changeProvider(e.target.value)}><option value="" disabled>Seleccionar</option>{providers.map(p => <option key={p} value={p}>{p === "BBVA" ? "BBVA (Francés)" : p}</option>)}</select></label>
+          {provider === "Santander" && <label className="field-label">Comisión Santander (%)<input type="number" min="0" step="0.01" value={santanderRate} onChange={e => setSantanderRate(e.target.value)} placeholder="Cargar porcentaje cuando lo confirmes" /></label>}
           {provider && provider !== "Santander" && <label className="field-label">Plan de acreditación<select value={planId} onChange={e => setPlanId(e.target.value)}><option value="" disabled>Seleccionar</option>{availablePlans.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>}
         </>}
-
-        {isProcessorMethod(feeMethod) && processorValid && <div style={{padding:"12px 14px",border:"1px solid var(--border)",borderRadius:14,background:"var(--green-soft)",marginTop:8}}>
-          <div style={{fontWeight:900,fontSize:12}}>Comisión aplicada al cobrar</div>
-          <div style={{fontSize:11,marginTop:5}}>Base: {feeRate.toLocaleString("es-AR")}% + IVA 21% sobre la comisión.</div>
-          <div style={{fontSize:11,marginTop:4}}>Total descontado: <b>{money.format(commission)}</b> · Neto: <b>{money.format(netReceived)}</b></div>
-        </div>}
-
-        <button className="primary-button full-button" disabled={!canConfirm} onClick={confirmSale}>Confirmar venta</button>
-        <button className="ghost-button full-button" onClick={resetSale}><Trash2 size={16}/> Limpiar venta</button>
+        {isProcessorMethod(feeMethod) && processorValid && <div style={{padding:"12px 14px",border:"1px solid var(--border)",borderRadius:14,background:"var(--green-soft)",marginTop:8}}><div style={{fontWeight:900,fontSize:12}}>Comisión aplicada al cobrar</div><div style={{fontSize:11,marginTop:5}}>Base: {feeRate.toLocaleString("es-AR")}% + IVA 21% sobre la comisión.</div><div style={{fontSize:11,marginTop:4}}>Total descontado: <b>{money.format(commission)}</b> · Neto: <b>{money.format(netReceived)}</b></div></div>}
+        <button className="primary-button full-button" disabled={!canConfirm} onClick={confirmSale}>Confirmar venta</button><button className="ghost-button full-button" onClick={resetSale}><Trash2 size={16}/> Limpiar venta</button>
       </div>
     </section>
   </AppShell>;
