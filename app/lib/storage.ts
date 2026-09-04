@@ -18,7 +18,8 @@ export type Sale = {
   settlement?:string;
   secondaryMethod?:string;
 };
-export type CashMovement = { id:number; type:"Ingreso"|"Egreso"; concept:string; amount:number; method:string; note:string; createdAt:string; source?:string };
+export type CashMovement = { id:number; type:"Ingreso"|"Egreso"; concept:string; amount:number; method:string; note:string; createdAt:string; source?:string; category?:string };
+export type CashClosure = { id:number; month:string; year:number; income:number; expenses:number; balance:number; movementCount:number; expenseBreakdown:Record<string,number>; closedAt:string };
 export type Repair = { id:number; nombre:string; apellido:string; telefono:string; email:string; equipo:string; motivo:string; precio:number; estado:string; createdAt:string };
 export type Quote = { id:number; cliente:string; telefono:string; equipo:string; reparacion:string; costo:number; precio:number; estado:string; createdAt:string };
 export type Part = { id:number; name:string; model:string; cost:number; price:number; stock:number; minStock:number };
@@ -28,6 +29,7 @@ export const KEYS = {
   products:"cityphone_products_v1",
   sales:"cityphone_sales_v1",
   cash:"cityphone_cash_v1",
+  cashClosures:"cityphone_cash_closures_v1",
   repairs:"cityphone_repairs_v1",
   quotes:"cityphone_quotes_v1",
   parts:"cityphone_parts_v1",
