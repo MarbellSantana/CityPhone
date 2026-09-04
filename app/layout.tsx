@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import PWARegister from "./pwa-register";
+import ProductCatalogSeed from "./components/ProductCatalogSeed";
 
 export const metadata: Metadata = {
   title: "City Phone | Gestión del local",
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="es">
       <body>
         <PWARegister />
+        <ProductCatalogSeed />
         {children}
       </body>
     </html>
