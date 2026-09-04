@@ -17,6 +17,7 @@ export type Sale = {
   netTotal?:number;
   settlement?:string;
   secondaryMethod?:string;
+  deposited?:boolean;
   invoiceRequested?:boolean;
   invoiceStatus?:"No facturada"|"Pendiente"|"Facturada"|"Error";
   invoiceType?:string;
