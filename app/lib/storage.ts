@@ -29,6 +29,7 @@ export type Sale = {
   customerEmail?:string;
   customerDocType?:string;
   customerDocNumber?:string;
+  customerIvaConditionId?:number;
 };
 export type CashMovement = { id:number; type:"Ingreso"|"Egreso"; concept:string; amount:number; method:string; note:string; createdAt:string; source?:string; category?:string };
 export type CashClosure = { id:number; month:string; year:number; income:number; expenses:number; balance:number; movementCount:number; expenseBreakdown:Record<string,number>; closedAt:string };
