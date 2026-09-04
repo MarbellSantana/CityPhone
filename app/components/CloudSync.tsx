@@ -11,7 +11,7 @@ import {
   getDirtyKeys,
 } from "../lib/storage";
 
-const SESSION_HYDRATED = "cityphone_cloud_hydrated_v1";
+const SESSION_HYDRATED = "cityphone_cloud_hydrated_v2";
 const ALL_KEYS = Object.values(KEYS);
 
 function readLocalState() {
@@ -21,13 +21,13 @@ function readLocalState() {
     if (!raw) continue;
     try { state[key] = JSON.parse(raw); } catch { /* ignore malformed local value */ }
   }
-
-  if (!(KEYS.products in state)) {
-    state[KEYS.products] = INITIAL_PRODUCTS;
-    localStorage.setItem(KEYS.products, JSON.stringify(INITIAL_PRODUCTS));
-  }
-
   return state;
+}
+
+function ensureLocalCatalog(remoteState:Record<string,unknown>) {
+  if (KEYS.products in remoteState || localStorage.getItem(KEYS.products)) return false;
+  localStorage.setItem(KEYS.products, JSON.stringify(INITIAL_PRODUCTS));
+  return true;
 }
 
 function applyRemote(state:Record<string,unknown>, skipKeys:Set<string> = new Set()) {
@@ -58,7 +58,8 @@ export default function CloudSync() {
         const remote = await cloudBootstrap(localState, dirtyKeys);
         if (disposed) return;
         clearDirtyKeys(dirtyKeys);
-        const changed = applyRemote(remote.state || {});
+        let changed = applyRemote(remote.state || {});
+        changed = ensureLocalCatalog(remote.state || {}) || changed;
         if (changed && !sessionStorage.getItem(SESSION_HYDRATED)) {
           sessionStorage.setItem(SESSION_HYDRATED, "1");
           window.location.reload();
