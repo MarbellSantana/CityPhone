@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Box, CalendarDays, Minus, Plus, Search, Trash2, X, RefreshCw } from "lucide-react";
+import { AlertTriangle, Box, CalendarDays, Minus, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import AppShell from "../components/AppShell";
+import { INITIAL_PRODUCTS } from "../lib/initial-products";
 import { KEYS, LocalLoan, Product, load, money, save } from "../lib/storage";
 
 const categories = ["Fundas", "Vidrios", "Cargadores", "Auriculares", "Accesorios"];
@@ -11,6 +12,7 @@ type Tab = "productos" | "reposicion" | "prestamos";
 export default function InventarioPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loans, setLoans] = useState<LocalLoan[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [loanOpen, setLoanOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
@@ -22,11 +24,19 @@ export default function InventarioPage() {
   const [category, setCategory] = useState("Todas las categorías");
 
   useEffect(() => {
-    setProducts(load<Product[]>(KEYS.products, []));
+    const storedProducts = load<Product[]>(KEYS.products, []);
+    setProducts(storedProducts.length > 0 ? storedProducts : INITIAL_PRODUCTS);
     setLoans(load<LocalLoan[]>(KEYS.localLoans, []));
+    setDataLoaded(true);
   }, []);
-  useEffect(() => save(KEYS.products, products), [products]);
-  useEffect(() => save(KEYS.localLoans, loans), [loans]);
+
+  useEffect(() => {
+    if (dataLoaded && products.length > 0) save(KEYS.products, products);
+  }, [products, dataLoaded]);
+
+  useEffect(() => {
+    if (dataLoaded) save(KEYS.localLoans, loans);
+  }, [loans, dataLoaded]);
 
   const filtered = useMemo(() => products.filter(p => {
     const q = search.toLowerCase().trim();
@@ -91,10 +101,7 @@ export default function InventarioPage() {
   function applyStockUpdate() {
     if (!selectedProduct || updateQty <= 0) return;
     setProducts(v => v.map(p => p.id === selectedProduct.id ? { ...p, stock: p.stock + updateQty } : p));
-    setUpdateOpen(false);
-    setUpdateSearch("");
-    setSelectedProductId(null);
-    setUpdateQty(1);
+    closeUpdateModal();
   }
 
   function closeUpdateModal() {
@@ -112,8 +119,8 @@ export default function InventarioPage() {
     subtitle="Administra productos, reposición y préstamos entre locales."
     active="Inventario"
     action={<div className="inventory-header-actions">
-      <button className="primary-button inventory-add-button" onClick={() => setUpdateOpen(true)}><RefreshCw size={16}/> Actualización</button>
-      <button className="primary-button inventory-add-button" onClick={() => setProductOpen(true)}><Plus size={16}/> Cargar producto</button>
+      <button className="primary-button inventory-main-action" onClick={() => setUpdateOpen(true)}><RefreshCw size={16}/> Actualización</button>
+      <button className="primary-button inventory-main-action" onClick={() => setProductOpen(true)}><Plus size={16}/> Cargar producto</button>
     </div>}
   >
     <div className="subnav-tabs">
@@ -192,19 +199,24 @@ export default function InventarioPage() {
     {updateOpen && <div className="modal-backdrop" role="presentation" onMouseDown={closeUpdateModal}>
       <section className="inventory-product-modal inventory-update-modal" role="dialog" aria-modal="true" aria-labelledby="update-product-title" onMouseDown={e => e.stopPropagation()}>
         <div className="modal-heading">
-          <div><span className="eyebrow">INVENTARIO</span><h2 id="update-product-title">Actualización de stock</h2><p>Busca un producto existente y agrega las unidades que ingresaron.</p></div>
+          <div><span className="eyebrow">INVENTARIO</span><h2 id="update-product-title">Actualización de stock</h2><p>Busca el producto y suma lo que acaba de ingresar.</p></div>
           <button className="modal-close" onClick={closeUpdateModal} aria-label="Cerrar"><X size={19}/></button>
+        </div>
+
+        <div className="inventory-update-hero">
+          <div className="inventory-update-icon"><RefreshCw size={20}/></div>
+          <div><b>Actualizar inventario</b><span>Elige un producto existente y agrega nuevas unidades sin buscarlo en toda la lista.</span></div>
         </div>
 
         <div className="search-field inventory-update-search">
           <Search size={18}/>
-          <input value={updateSearch} onChange={e => { setUpdateSearch(e.target.value); setSelectedProductId(null); }} autoFocus placeholder="Buscar por nombre, categoría o código..." />
+          <input value={updateSearch} onChange={e => { setUpdateSearch(e.target.value); setSelectedProductId(null); }} autoFocus placeholder="Buscar producto o código..." />
         </div>
 
         {!selectedProduct && <div className="inventory-update-results">
           {updateResults.length === 0 ? <div className="empty-state compact"><Search size={30}/><b>No encontramos ese producto</b><span>Prueba escribiendo parte del nombre o el código.</span></div> : updateResults.map(p => <button key={p.id} type="button" className="inventory-update-result" onClick={() => setSelectedProductId(p.id)}>
-            <span><b>{p.name}</b><small>{p.category}{p.code ? ` · ${p.code}` : ""}</small></span>
-            <span><small>Stock actual</small><strong>{p.stock}</strong></span>
+            <span className="inventory-update-result-name"><b>{p.name}</b><small>{p.category}{p.code ? ` · ${p.code}` : ""}</small></span>
+            <span className="inventory-stock-pill"><small>Stock</small><strong>{p.stock}</strong></span>
           </button>)}
         </div>}
 
@@ -212,15 +224,15 @@ export default function InventarioPage() {
           <button type="button" className="text-button" onClick={() => setSelectedProductId(null)}>← Cambiar producto</button>
           <div className="inventory-update-product-card">
             <div><small>Producto seleccionado</small><h3>{selectedProduct.name}</h3><span>{selectedProduct.category}{selectedProduct.code ? ` · ${selectedProduct.code}` : ""}</span></div>
-            <div><small>Stock actual</small><strong>{selectedProduct.stock}</strong></div>
+            <div className="inventory-stock-pill large"><small>Stock actual</small><strong>{selectedProduct.stock}</strong></div>
           </div>
-          <label className="field-label">Unidades que ingresaron<input type="number" min="1" step="1" value={updateQty} onChange={e => setUpdateQty(Math.max(1, Number(e.target.value) || 1))} /></label>
-          <div className="inventory-update-preview"><span>Nuevo stock</span><strong>{selectedProduct.stock + updateQty}</strong></div>
+          <label className="field-label inventory-update-qty">Unidades que ingresaron<input type="number" min="1" step="1" value={updateQty} onChange={e => setUpdateQty(Math.max(1, Number(e.target.value) || 1))} /></label>
+          <div className="inventory-update-preview"><span>Stock después de actualizar</span><strong>{selectedProduct.stock + updateQty}</strong></div>
         </div>}
 
         <div className="modal-actions">
           <button className="outline-action" type="button" onClick={closeUpdateModal}>Cancelar</button>
-          <button className="primary-button" type="button" disabled={!selectedProduct || updateQty <= 0} onClick={applyStockUpdate}><Plus size={16}/> Agregar al stock</button>
+          <button className="primary-button" type="button" disabled={!selectedProduct || updateQty <= 0} onClick={applyStockUpdate}><RefreshCw size={16}/> Actualizar stock</button>
         </div>
       </section>
     </div>}
