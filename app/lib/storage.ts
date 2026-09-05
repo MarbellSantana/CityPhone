@@ -1,4 +1,4 @@
-export type Product = { id:number; name:string; category:string; cost:number; price:number; stock:number; minStock:number; code?:string; restockOmitted?:boolean };
+export type Product = { id:number; name:string; category:string; cost:number; price:number; stock:number; minStock:number; code?:string; restockOmitted?:boolean; restockSelected?:boolean };
 export type SaleItem = { productId:number; name:string; qty:number; price:number };
 export type Sale = {
   id:number;
