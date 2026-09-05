@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Box, CalendarDays, Minus, Plus, Search, Trash2, X } from "lucide-react";
+import { AlertTriangle, Box, CalendarDays, Minus, Plus, Search, Trash2, X, RefreshCw } from "lucide-react";
 import AppShell from "../components/AppShell";
 import { KEYS, LocalLoan, Product, load, money, save } from "../lib/storage";
 
@@ -13,6 +13,10 @@ export default function InventarioPage() {
   const [loans, setLoans] = useState<LocalLoan[]>([]);
   const [loanOpen, setLoanOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const [updateSearch, setUpdateSearch] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [updateQty, setUpdateQty] = useState(1);
   const [tab, setTab] = useState<Tab>("productos");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Todas las categorías");
@@ -31,6 +35,17 @@ export default function InventarioPage() {
     return matchesText && matchesCategory;
   }), [products, search, category]);
 
+  const updateResults = useMemo(() => {
+    const q = updateSearch.toLowerCase().trim();
+    if (!q) return products.slice(0, 8);
+    return products.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.category.toLowerCase().includes(q) ||
+      (p.code || "").toLowerCase().includes(q)
+    ).slice(0, 12);
+  }, [products, updateSearch]);
+
+  const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId) || null, [products, selectedProductId]);
   const restock = useMemo(() => products.filter(p => p.minStock > 0 && p.stock < p.minStock), [products]);
   const restockUnits = useMemo(() => restock.reduce((sum,p) => sum + (p.minStock - p.stock), 0), [restock]);
 
@@ -73,6 +88,22 @@ export default function InventarioPage() {
     setProducts(v => v.map(p => p.id === id ? { ...p, stock: Math.max(0, p.stock + delta) } : p));
   }
 
+  function applyStockUpdate() {
+    if (!selectedProduct || updateQty <= 0) return;
+    setProducts(v => v.map(p => p.id === selectedProduct.id ? { ...p, stock: p.stock + updateQty } : p));
+    setUpdateOpen(false);
+    setUpdateSearch("");
+    setSelectedProductId(null);
+    setUpdateQty(1);
+  }
+
+  function closeUpdateModal() {
+    setUpdateOpen(false);
+    setUpdateSearch("");
+    setSelectedProductId(null);
+    setUpdateQty(1);
+  }
+
   function removeProduct(id:number) { setProducts(v => v.filter(p => p.id !== id)); }
   function removeLoan(id:number) { setLoans(v => v.filter(l => l.id !== id)); }
 
@@ -80,7 +111,10 @@ export default function InventarioPage() {
     title="Inventario"
     subtitle="Administra productos, reposición y préstamos entre locales."
     active="Inventario"
-    action={<button className="primary-button inventory-add-button" onClick={() => setProductOpen(true)}><Plus size={16}/> Cargar producto</button>}
+    action={<div className="inventory-header-actions">
+      <button className="outline-action inventory-update-button" onClick={() => setUpdateOpen(true)}><RefreshCw size={16}/> Actualización</button>
+      <button className="primary-button inventory-add-button" onClick={() => setProductOpen(true)}><Plus size={16}/> Cargar producto</button>
+    </div>}
   >
     <div className="subnav-tabs">
       <button className={tab === "productos" ? "active" : ""} onClick={() => setTab("productos")}><Box size={16}/> Productos</button>
@@ -152,6 +186,42 @@ export default function InventarioPage() {
           </div>
           <div className="modal-actions"><button className="outline-action" type="button" onClick={() => setProductOpen(false)}>Cancelar</button><button className="primary-button" type="submit"><Plus size={16}/> Guardar producto</button></div>
         </form>
+      </section>
+    </div>}
+
+    {updateOpen && <div className="modal-backdrop" role="presentation" onMouseDown={closeUpdateModal}>
+      <section className="inventory-product-modal inventory-update-modal" role="dialog" aria-modal="true" aria-labelledby="update-product-title" onMouseDown={e => e.stopPropagation()}>
+        <div className="modal-heading">
+          <div><span className="eyebrow">INVENTARIO</span><h2 id="update-product-title">Actualización de stock</h2><p>Busca un producto existente y agrega las unidades que ingresaron.</p></div>
+          <button className="modal-close" onClick={closeUpdateModal} aria-label="Cerrar"><X size={19}/></button>
+        </div>
+
+        <div className="search-field inventory-update-search">
+          <Search size={18}/>
+          <input value={updateSearch} onChange={e => { setUpdateSearch(e.target.value); setSelectedProductId(null); }} autoFocus placeholder="Buscar por nombre, categoría o código..." />
+        </div>
+
+        {!selectedProduct && <div className="inventory-update-results">
+          {updateResults.length === 0 ? <div className="empty-state compact"><Search size={30}/><b>No encontramos ese producto</b><span>Prueba escribiendo parte del nombre o el código.</span></div> : updateResults.map(p => <button key={p.id} type="button" className="inventory-update-result" onClick={() => setSelectedProductId(p.id)}>
+            <span><b>{p.name}</b><small>{p.category}{p.code ? ` · ${p.code}` : ""}</small></span>
+            <span><small>Stock actual</small><strong>{p.stock}</strong></span>
+          </button>)}
+        </div>}
+
+        {selectedProduct && <div className="inventory-update-selected">
+          <button type="button" className="text-button" onClick={() => setSelectedProductId(null)}>← Cambiar producto</button>
+          <div className="inventory-update-product-card">
+            <div><small>Producto seleccionado</small><h3>{selectedProduct.name}</h3><span>{selectedProduct.category}{selectedProduct.code ? ` · ${selectedProduct.code}` : ""}</span></div>
+            <div><small>Stock actual</small><strong>{selectedProduct.stock}</strong></div>
+          </div>
+          <label className="field-label">Unidades que ingresaron<input type="number" min="1" step="1" value={updateQty} onChange={e => setUpdateQty(Math.max(1, Number(e.target.value) || 1))} /></label>
+          <div className="inventory-update-preview"><span>Nuevo stock</span><strong>{selectedProduct.stock + updateQty}</strong></div>
+        </div>}
+
+        <div className="modal-actions">
+          <button className="outline-action" type="button" onClick={closeUpdateModal}>Cancelar</button>
+          <button className="primary-button" type="button" disabled={!selectedProduct || updateQty <= 0} onClick={applyStockUpdate}><Plus size={16}/> Agregar al stock</button>
+        </div>
       </section>
     </div>}
   </AppShell>;
