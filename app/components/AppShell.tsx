@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BarChart3, Box, ChevronDown, CreditCard, LayoutDashboard, Receipt, Wrench } from "lucide-react";
 import HistoricalSalesEntry from "./HistoricalSalesEntry";
 import CashBalanceDetails from "./CashBalanceDetails";
+import HistoricalCashBackfill from "./HistoricalCashBackfill";
 
 const nav = [
   [LayoutDashboard, "Dashboard", "/"],
@@ -19,6 +20,7 @@ export default function AppShell({ title, subtitle, active, children, action, ti
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="city-shell">
+      <HistoricalCashBackfill active={active} />
       <main className="main">
         <header className="header">
           <div className="brand-block">
