@@ -11,7 +11,7 @@ import {
   getDirtyKeys,
 } from "../lib/storage";
 
-const SESSION_HYDRATED = "cityphone_cloud_hydrated_v3";
+const SESSION_HYDRATED = "cityphone_cloud_hydrated_v4";
 const ALL_KEYS = Object.values(KEYS);
 
 function readLocalState() {
@@ -24,7 +24,7 @@ function readLocalState() {
   return state;
 }
 
-function isNonEmptyArray(value:unknown):boolean {
+function isNonEmptyArray(value:unknown):value is unknown[] {
   return Array.isArray(value) && value.length > 0;
 }
 
@@ -40,15 +40,15 @@ function applyRemote(state:Record<string,unknown>, skipKeys:Set<string> = new Se
   for (const key of ALL_KEYS) {
     if (!(key in state) || skipKeys.has(key)) continue;
 
-    // Never let an empty cloud inventory erase a non-empty inventory on this device.
-    if (key === KEYS.products && Array.isArray(state[key]) && state[key].length === 0) {
+    const remoteValue = state[key];
+    if (key === KEYS.products && Array.isArray(remoteValue) && remoteValue.length === 0) {
       const localProducts = (() => {
         try { return JSON.parse(localStorage.getItem(KEYS.products) || "[]"); } catch { return []; }
       })();
       if (Array.isArray(localProducts) && localProducts.length > 0) continue;
     }
 
-    const next = JSON.stringify(state[key]);
+    const next = JSON.stringify(remoteValue);
     if (localStorage.getItem(key) !== next) {
       localStorage.setItem(key, next);
       changed = true;
@@ -75,8 +75,8 @@ export default function CloudSync() {
         const remote = await cloudBootstrap(localState, dirtyKeys);
         if (disposed) return;
 
-        // If the server inventory is empty, repopulate it from the protected local inventory.
-        if (Array.isArray(remote.state?.[KEYS.products]) && remote.state[KEYS.products].length === 0 && isNonEmptyArray(protectedProducts)) {
+        const remoteProducts = remote.state?.[KEYS.products];
+        if (Array.isArray(remoteProducts) && remoteProducts.length === 0 && isNonEmptyArray(protectedProducts)) {
           const repaired = await cloudBootstrap({ [KEYS.products]: protectedProducts }, [KEYS.products]);
           if (disposed) return;
           remote.state = { ...(remote.state || {}), ...(repaired.state || {}) };
@@ -110,7 +110,8 @@ export default function CloudSync() {
         const remote = await cloudPull();
         if (disposed) return;
 
-        if (Array.isArray(remote.state?.[KEYS.products]) && remote.state[KEYS.products].length === 0) {
+        const remoteProducts = remote.state?.[KEYS.products];
+        if (Array.isArray(remoteProducts) && remoteProducts.length === 0) {
           syncing = false;
           await bootstrap();
           return;
