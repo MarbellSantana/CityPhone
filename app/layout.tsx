@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./responsive.css";
 import PWARegister from "./pwa-register";
 import CloudSync from "./components/CloudSync";
 
