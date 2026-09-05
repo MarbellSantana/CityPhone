@@ -112,7 +112,7 @@ export default function InventarioPage() {
     subtitle="Administra productos, reposición y préstamos entre locales."
     active="Inventario"
     action={<div className="inventory-header-actions">
-      <button className="outline-action inventory-update-button" onClick={() => setUpdateOpen(true)}><RefreshCw size={16}/> Actualización</button>
+      <button className="primary-button inventory-add-button" onClick={() => setUpdateOpen(true)}><RefreshCw size={16}/> Actualización</button>
       <button className="primary-button inventory-add-button" onClick={() => setProductOpen(true)}><Plus size={16}/> Cargar producto</button>
     </div>}
   >
