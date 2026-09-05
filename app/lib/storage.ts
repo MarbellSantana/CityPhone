@@ -1,4 +1,4 @@
-export type Product = { id:number; name:string; category:string; cost:number; price:number; stock:number; minStock:number; code?:string };
+export type Product = { id:number; name:string; category:string; cost:number; price:number; stock:number; minStock:number; code?:string; restockOmitted?:boolean };
 export type SaleItem = { productId:number; name:string; qty:number; price:number };
 export type Sale = {
   id:number;
@@ -91,45 +91,53 @@ function markDirty(key:string) {
   writeDirty(dirty);
 }
 
-async function cloudRequest<T>(body:Record<string,unknown>):Promise<T> {
-  const r = await fetch(CLOUD_ENDPOINT, {
+async function requestCloud(body:unknown) {
+  const response = await fetch(CLOUD_ENDPOINT, {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify(body),
     cache:"no-store",
   });
-  const data = await r.json().catch(()=>({}));
-  if (!r.ok || data?.ok === false) throw new Error(data?.error || "No se pudo sincronizar con la nube");
-  return data as T;
+  if (!response.ok) throw new Error(`Cloud sync failed: ${response.status}`);
+  return response.json();
 }
 
-export async function cloudPull():Promise<{state:Record<string,unknown>;updatedAt:Record<string,string>}> {
-  return cloudRequest({action:"pull"});
+async function pushCloud(key:string, value:unknown) {
+  if (!cloudKeys.has(key)) return;
+  try {
+    await requestCloud({action:"push", key, value});
+    const dirty = readDirty();
+    if (key in dirty) { delete dirty[key]; writeDirty(dirty); }
+    if (typeof window !== "undefined") localStorage.setItem(CLOUD_LAST_SYNC_KEY, new Date().toISOString());
+  } catch {
+    markDirty(key);
+  }
 }
 
-export async function cloudBootstrap(state:Record<string,unknown>, dirtyKeys:string[]):Promise<{state:Record<string,unknown>;updatedAt:Record<string,string>}> {
-  return cloudRequest({action:"bootstrap",state,dirtyKeys});
-}
-
-async function pushCloud<T>(key:string, value:T) {
-  await cloudRequest({action:"push",key,value});
-  if (typeof window !== "undefined" && localStorage.getItem(key) === JSON.stringify(value)) clearDirtyKeys([key]);
-  if (typeof window !== "undefined") localStorage.setItem(CLOUD_LAST_SYNC_KEY, new Date().toISOString());
+function queueCloudPush(key:string, value:unknown) {
+  const previous = pushQueues.get(key) || Promise.resolve();
+  const next = previous.catch(() => undefined).then(() => pushCloud(key, value));
+  pushQueues.set(key, next);
+  void next.finally(() => { if (pushQueues.get(key) === next) pushQueues.delete(key); });
 }
 
 export function save<T>(key:string, value:T) {
   if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
-  if (!cloudKeys.has(key)) return;
+  if (cloudKeys.has(key)) {
+    markDirty(key);
+    queueCloudPush(key, value);
+  }
+}
 
-  markDirty(key);
-  const previous = pushQueues.get(key) ?? Promise.resolve();
-  const next = previous
-    .catch(()=>undefined)
-    .then(()=>pushCloud(key,value))
-    .catch(()=>undefined)
-    .finally(()=>{ if (pushQueues.get(key) === next) pushQueues.delete(key); });
-  pushQueues.set(key,next);
+export async function cloudPull():Promise<Record<string,unknown>> {
+  const result = await requestCloud({action:"pull"});
+  return (result?.state || {}) as Record<string,unknown>;
+}
+
+export async function cloudBootstrap(localState:Record<string,unknown>, dirtyKeys:string[] = []):Promise<Record<string,unknown>> {
+  const result = await requestCloud({action:"bootstrap", state:localState, dirtyKeys});
+  return (result?.state || {}) as Record<string,unknown>;
 }
 
 export const money = new Intl.NumberFormat("es-AR", { style:"currency", currency:"ARS", maximumFractionDigits:0 });
