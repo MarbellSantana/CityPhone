@@ -46,7 +46,7 @@ export default function VentasPage(){
  const todaySales=useMemo(()=>{const today=new Date().toDateString();return sales.filter(s=>new Date(s.createdAt).toDateString()===today)},[sales]);
  const todayGross=useMemo(()=>todaySales.reduce((sum,s)=>sum+s.total,0),[todaySales]);
  const todayNet=useMemo(()=>todaySales.reduce((sum,s)=>sum+(typeof s.netTotal==="number"?s.netTotal:s.total-(s.commission||0)),0),[todaySales]);
- const cashBalance=useMemo(()=>cashMovements.reduce((sum,m)=>sum+(m.type==="Ingreso"?m.amount:-m.amount),0),[cashMovements]);
+ const cashBalance=useMemo(()=>cashMovements.filter(m=>m.method==="Efectivo").reduce((sum,m)=>sum+(m.type==="Ingreso"?m.amount:-m.amount),0),[cashMovements]);
  const hasNonCash=method!==""&&method!=="Efectivo";
  const chipsValid=cart.every(i=>!isChipItem(i)||(!!i.chipCarrier&&!!i.chipPlan));
 
