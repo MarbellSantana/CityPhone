@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { BarChart3, Box, ChevronDown, CreditCard, LayoutDashboard, Receipt, Wrench } from "lucide-react";
+import HistoricalSalesEntry from "./HistoricalSalesEntry";
 
 const nav = [
   [LayoutDashboard, "Dashboard", "/"],
@@ -43,6 +44,7 @@ export default function AppShell({ title, subtitle, active, children, action, ti
           </div>
           {action}
         </section>
+        {active === "Ventas" && <HistoricalSalesEntry />}
         {children}
       </main>
     </div>
