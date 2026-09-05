@@ -11,7 +11,7 @@ import {
   getDirtyKeys,
 } from "../lib/storage";
 
-const SESSION_HYDRATED = "cityphone_cloud_hydrated_v2";
+const SESSION_HYDRATED = "cityphone_cloud_hydrated_v3";
 const ALL_KEYS = Object.values(KEYS);
 
 function readLocalState() {
@@ -24,16 +24,30 @@ function readLocalState() {
   return state;
 }
 
-function ensureLocalCatalog(remoteState:Record<string,unknown>) {
-  if (KEYS.products in remoteState || localStorage.getItem(KEYS.products)) return false;
+function isNonEmptyArray(value:unknown):boolean {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function ensureLocalInventory(localState:Record<string,unknown>) {
+  const localProducts = localState[KEYS.products];
+  if (isNonEmptyArray(localProducts)) return localProducts;
   localStorage.setItem(KEYS.products, JSON.stringify(INITIAL_PRODUCTS));
-  return true;
+  return INITIAL_PRODUCTS;
 }
 
 function applyRemote(state:Record<string,unknown>, skipKeys:Set<string> = new Set()) {
   let changed = false;
   for (const key of ALL_KEYS) {
     if (!(key in state) || skipKeys.has(key)) continue;
+
+    // Never let an empty cloud inventory erase a non-empty inventory on this device.
+    if (key === KEYS.products && Array.isArray(state[key]) && state[key].length === 0) {
+      const localProducts = (() => {
+        try { return JSON.parse(localStorage.getItem(KEYS.products) || "[]"); } catch { return []; }
+      })();
+      if (Array.isArray(localProducts) && localProducts.length > 0) continue;
+    }
+
     const next = JSON.stringify(state[key]);
     if (localStorage.getItem(key) !== next) {
       localStorage.setItem(key, next);
@@ -54,12 +68,22 @@ export default function CloudSync() {
       syncing = true;
       try {
         const localState = readLocalState();
+        const protectedProducts = ensureLocalInventory(localState);
+        localState[KEYS.products] = protectedProducts;
+
         const dirtyKeys = getDirtyKeys();
         const remote = await cloudBootstrap(localState, dirtyKeys);
         if (disposed) return;
+
+        // If the server inventory is empty, repopulate it from the protected local inventory.
+        if (Array.isArray(remote.state?.[KEYS.products]) && remote.state[KEYS.products].length === 0 && isNonEmptyArray(protectedProducts)) {
+          const repaired = await cloudBootstrap({ [KEYS.products]: protectedProducts }, [KEYS.products]);
+          if (disposed) return;
+          remote.state = { ...(remote.state || {}), ...(repaired.state || {}) };
+        }
+
         clearDirtyKeys(dirtyKeys);
-        let changed = applyRemote(remote.state || {});
-        changed = ensureLocalCatalog(remote.state || {}) || changed;
+        const changed = applyRemote(remote.state || {});
         if (changed && !sessionStorage.getItem(SESSION_HYDRATED)) {
           sessionStorage.setItem(SESSION_HYDRATED, "1");
           window.location.reload();
@@ -85,6 +109,13 @@ export default function CloudSync() {
         }
         const remote = await cloudPull();
         if (disposed) return;
+
+        if (Array.isArray(remote.state?.[KEYS.products]) && remote.state[KEYS.products].length === 0) {
+          syncing = false;
+          await bootstrap();
+          return;
+        }
+
         const changed = applyRemote(remote.state || {});
         if (changed) window.location.reload();
       } catch (error) {
